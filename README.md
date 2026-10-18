@@ -71,13 +71,33 @@ IntelliJ에서 실행할 때는 Run Configuration의 Environment variables에 `.
 
 ## 프로필
 
-| 프로필 | 용도 | ddl-auto |
-|---|---|---|
-| `local` (기본값) | 로컬 개발 | `update` |
-| `dev` | 개발 서버 | `validate` |
-| `prod` | 운영 서버 (Swagger 비활성화) | `validate` |
+| 프로필 | 용도 |
+|---|---|
+| `local` (기본값) | 로컬 개발 (SQL 로그 출력) |
+| `dev` | 개발 서버 |
+| `prod` | 운영 서버 (Swagger 비활성화) |
 
 `SPRING_PROFILES_ACTIVE` 환경 변수로 프로필을 바꿉니다.
+
+## DB 마이그레이션 (Flyway)
+
+테이블은 Flyway 마이그레이션 SQL로만 만들고 바꿉니다. 모든 프로필에서 JPA `ddl-auto`는 `validate`라서, 엔티티와 테이블이 다르면 앱이 뜨지 않습니다.
+
+- 위치: `src/main/resources/db/migration`
+- 파일 이름: `V{yyyyMMddHHmm}__{설명}.sql`
+  - 예: `V202610201530__create_animals.sql`
+  - 백엔드 두 명이 동시에 만들어도 번호가 겹치지 않도록 버전은 작성 시각으로 씁니다.
+- 앱이 시작될 때 아직 적용되지 않은 파일이 자동으로 실행됩니다.
+- **이미 머지된 마이그레이션 파일은 고치지 않습니다.** 바꿀 내용이 있으면 새 파일을 추가합니다. (적용된 파일을 고치면 체크섬이 달라져 앱이 뜨지 않습니다.)
+- 다른 사람의 마이그레이션이 먼저 머지됐다면, 내 파일의 버전(시각)이 그보다 뒤가 되도록 이름을 바꾼 뒤 머지합니다. (Flyway는 이미 적용된 버전보다 앞선 버전을 실행하지 않습니다.)
+- 엔티티를 만들 때 `BaseTimeEntity`를 상속하면 `created_at`, `updated_at` 컬럼이 필요합니다. 타입은 `timestamp(6) with time zone`입니다.
+
+로컬 DB를 처음부터 다시 만들고 싶으면 볼륨을 지우고 다시 띄웁니다.
+
+```bash
+docker compose down -v
+docker compose up -d
+```
 
 ## 환경 변수
 
