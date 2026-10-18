@@ -1,6 +1,16 @@
 # tail-server
 
-꼬리친구(파충류 사육 기록 + 사진으로 만든 캐릭터 앱)의 백엔드 서버입니다.
+꼬리친구의 백엔드 API 서버입니다.
+
+꼬리친구는 내 파충류 사진으로 만든 캐릭터가 사육장에서 지내며, 실제 급여·탈피·체중 기록에 따라 상태를 알려주는 사육 기록 앱입니다. 사용자 앱(Flutter)과 관리자 웹이 이 서버의 API를 사용합니다.
+
+## 서버가 하는 일
+
+- 인증: 소셜 로그인, JWT 발급·재발급, 로그아웃
+- 개체·종 관리, 종별 사육 계획 초기 데이터
+- 급여·탈피·체중 기록. 기록이 바뀔 때마다 다음 급여일과 건강 경고를 다시 계산
+- 사진 업로드와 AI 캐릭터 분석 (하루 분석 횟수 제한)
+- 관리자 API: 종·사육 가이드 관리, 운영 통계
 
 ## 기술 스택
 
@@ -10,6 +20,22 @@
 - springdoc-openapi (Swagger UI), jjwt
 
 > JDK 21이 설치되어 있지 않아도 됩니다. Gradle toolchain이 JDK 21을 자동으로 내려받습니다.
+
+## 패키지 구조
+
+```
+com.tailfriends
+├─ global    공통 설정, 보안, 예외, 응답 형식, 유틸
+├─ auth      인증
+├─ animal    개체
+├─ species   종
+├─ log       사육 기록
+├─ photo     사진, AI 분석
+├─ health    건강 경고
+└─ admin     관리자
+```
+
+도메인 패키지 안은 `controller / service / repository / domain / dto`로 나눕니다.
 
 ## 로컬 실행
 
@@ -62,3 +88,39 @@ IntelliJ에서 실행할 때는 Run Configuration의 Environment variables에 `.
 ```bash
 ./gradlew build
 ```
+
+## 컨벤션
+
+### 브랜치
+
+| 브랜치 | 용도 |
+|---|---|
+| `main` | 배포본. develop에서 릴리즈할 때만 병합 |
+| `develop` | 개발 통합본. 개발 서버에 배포되며 PR로만 병합 |
+| `feature/#이슈번호-설명` | 기능 개발. develop에서 따고 develop으로 PR |
+| `fix/#이슈번호-설명` | 버그 수정 |
+| `hotfix/설명` | 배포본 긴급 수정. main과 develop에 모두 병합 |
+
+### 커밋 메시지
+
+형식: `타입: 한글로 한 줄 설명 (#이슈번호)`
+
+| 타입 | 언제 |
+|---|---|
+| `feat` | 기능 추가 |
+| `fix` | 버그 수정 |
+| `refactor` | 동작 변화 없는 구조 변경 |
+| `docs` | 문서 |
+| `test` | 테스트 |
+| `chore` | 빌드·설정·의존성 |
+| `style` | 포맷·오타 |
+
+### 코드
+
+- 이름: `AnimalController`, `AnimalService`, `AnimalRepository`, 요청·응답 DTO는 `AnimalCreateRequest`, `AnimalResponse`
+- 모든 응답은 `ApiResponse<T>`, 예외는 `BusinessException(ErrorCode)`로 던집니다
+- 엔티티를 컨트롤러 밖으로 내보내지 않고 DTO로 바꿉니다
+- 비밀값은 환경 변수로만 관리합니다
+- 급여일·경고 계산처럼 규칙이 있는 로직은 단위 테스트를 같이 올립니다
+- API를 바꿀 때는 API 명세서를 먼저 고치고, 이미 쓰는 필드는 지우지 않고 추가만 합니다
+- PR은 Squash and merge로 병합합니다
