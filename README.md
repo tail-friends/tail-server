@@ -89,6 +89,45 @@ IntelliJ에서 실행할 때는 Run Configuration의 Environment variables에 `.
 ./gradlew build
 ```
 
+## 배포 (개발 서버)
+
+`develop`에 머지되면 GitHub Actions(`.github/workflows/cd-dev.yml`)가 자동으로 배포합니다.
+
+1. Docker 이미지를 빌드해 GHCR(`ghcr.io/tail-friends/tail-server`)에 올립니다.
+2. 학교 서버에 SSH로 접속해 `deploy/docker-compose.yml`을 복사하고, 새 이미지로 컨테이너를 다시 띄웁니다.
+3. `/api/v1/health-check`가 응답하는지 확인합니다. 실패하면 앱 로그를 출력하고 워크플로가 실패합니다.
+
+Actions 탭에서 `CD (dev)` 워크플로를 직접 실행(Run workflow)할 수도 있습니다.
+
+### 서버 준비 (처음 한 번)
+
+1. Docker와 Docker Compose 플러그인을 설치합니다.
+2. 배포용 계정이 `docker` 명령을 쓸 수 있게 합니다. (`sudo usermod -aG docker <계정>`)
+3. 배포 폴더를 만들고 환경 변수 파일을 둡니다.
+
+```bash
+mkdir -p ~/tail-server
+# deploy/.env.example을 참고해 ~/tail-server/.env 작성
+```
+
+4. 배포용 SSH 키를 만들고, 공개 키를 서버의 `~/.ssh/authorized_keys`에 추가합니다.
+
+```bash
+ssh-keygen -t ed25519 -f tail-deploy -C "github-actions"
+```
+
+### GitHub 설정
+
+Settings → Environments에서 `dev` 환경을 만들고 아래 Secrets를 추가합니다.
+
+| 이름 | 값 |
+|---|---|
+| `SSH_HOST` | 서버 주소 |
+| `SSH_PORT` | SSH 포트 (비우면 22) |
+| `SSH_USER` | 배포용 계정 |
+| `SSH_PRIVATE_KEY` | 배포용 SSH 개인 키 (`tail-deploy` 파일 내용) |
+| `DEPLOY_PATH` | 배포 폴더 절대 경로 (예: `/home/<계정>/tail-server`) |
+
 ## 컨벤션
 
 ### 브랜치
