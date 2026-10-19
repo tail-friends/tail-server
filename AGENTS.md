@@ -120,7 +120,7 @@ com.tailfriends
 └─ admin     관리자
 ```
 
-도메인 패키지 안은 `controller / service / repository / domain / dto`로 나눈다.
+도메인 패키지 안은 `controller / service / repository / domain / dto`로 나눈다. 패키지는 실제로 코드를 작성할 때 만들고, 빈 패키지나 자리 표시용 `package-info.java`는 두지 않는다.
 
 ## 이름
 
