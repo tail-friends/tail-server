@@ -132,6 +132,7 @@ com.tailfriends
 ## 응답과 예외
 
 - 컨트롤러는 항상 `ApiResponse<T>`를 반환한다. 성공은 `ApiResponse.success(data)`, 데이터가 없으면 `ApiResponse.success()`.
+  - 예외: 명세가 `204`(본문 없음)인 API는 `@ResponseStatus(HttpStatus.NO_CONTENT)`와 `void`로 반환한다. (예: 로그아웃)
 - 실패는 `throw new BusinessException(ErrorCode.XXX)`로 던진다. 컨트롤러에서 직접 에러 응답을 만들지 않는다.
 - 새 에러 코드는 `global/exception/ErrorCode`에 추가하고, 노션 API 명세서의 공통 에러 코드 표에도 추가한다.
 - 요청 검증은 DTO에 Bean Validation 어노테이션을 달고 컨트롤러 파라미터에 `@Valid`를 붙인다. 검증 실패는 `GlobalExceptionHandler`가 `INVALID_INPUT`으로 바꾼다.
@@ -160,14 +161,14 @@ com.tailfriends
 
 - 인증이 필요 없는 경로는 `global/security/SecurityConfig`에만 추가한다. 모든 메서드를 열 때는 `PUBLIC_URLS`, GET만 열 때는 `PUBLIC_GET_URLS`.
 - `/api/v1/admin/**`은 ADMIN 권한이 필요하다.
-- 인증된 요청의 principal은 사용자 ID(`Long`)다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
+- 인증된 요청의 principal은 사용자 ID(`Long`)다. 컨트롤러에서는 `@AuthenticationPrincipal Long userId`로 받는다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
 - 리프레시 토큰은 원문을 저장하지 않고 `RefreshToken.hash()`(SHA-256)로 저장·조회한다.
 - 비밀값은 `application*.yml`에 `${ENV_NAME}`으로만 넣고, 새 환경 변수는 `.env.example`에 추가한다.
 
 ## 테스트
 
 - 급여일 계산, 건강 경고 판정처럼 규칙이 있는 로직은 단위 테스트를 같이 작성한다.
-- 컨트롤러 테스트는 `@WebMvcTest` + `@WebMvcTestSupport`(보안 설정 포함)로 작성한다. 인증이 필요한 API는 `@WithMockUser`를 쓴다.
+- 컨트롤러 테스트는 `@WebMvcTest` + `@WebMvcTestSupport`(보안 설정 포함)로 작성한다. 인증이 필요한 API는 `@WithMockUserId`(principal = 사용자 ID)를 쓴다. `@WithMockUser`는 principal이 사용자 ID가 아니라서 `@AuthenticationPrincipal Long userId`가 null이 된다.
 - 테스트 메서드 이름은 한글로 동작을 설명한다. 예: `안_먹음_기록은_다음_급여일_계산에서_제외한다()`
 - DB가 필요한 테스트는 `IntegrationTestSupport`를 상속한다. Testcontainers로 PostgreSQL을 띄우고 Flyway 마이그레이션을 적용한 상태에서 실행된다. 클래스 이름은 `~IntegrationTest`로 끝낸다.
 - 통합 테스트는 Docker가 없으면 로컬에서 건너뛰고, CI에서는 반드시 실행된다(건너뛰면 CI 실패). 로컬에서 `./gradlew build`가 통과해도 통합 테스트가 건너뛰어졌다면 "확인했다"고 쓰지 않는다.
