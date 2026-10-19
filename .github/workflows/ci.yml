@@ -49,3 +49,15 @@ jobs:
         with:
           name: test-report
           path: build/reports/tests/test
+
+      - name: Notify Discord on failure
+        if: failure() && github.event_name == 'push'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_MAP: ${{ vars.DISCORD_USER_MAP }}
+          CI_BRANCH: ${{ github.ref_name }}
+          CI_ACTOR: ${{ github.actor }}
+          CI_COMMIT_SHA: ${{ github.sha }}
+          CI_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          CI_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/discord-notify.sh ci-failed
