@@ -157,7 +157,7 @@ com.tailfriends
 
 ## 보안
 
-- 인증이 필요 없는 경로는 `global/security/SecurityConfig`의 `PUBLIC_URLS`에만 추가한다.
+- 인증이 필요 없는 경로는 `global/security/SecurityConfig`에만 추가한다. 모든 메서드를 열 때는 `PUBLIC_URLS`, GET만 열 때는 `PUBLIC_GET_URLS`.
 - `/api/v1/admin/**`은 ADMIN 권한이 필요하다.
 - 비밀값은 `application*.yml`에 `${ENV_NAME}`으로만 넣고, 새 환경 변수는 `.env.example`에 추가한다.
 
