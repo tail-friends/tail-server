@@ -27,6 +27,7 @@
 com.tailfriends
 ├─ global    공통 설정, 보안, 예외, 응답 형식, 유틸
 ├─ auth      인증
+├─ user      사용자
 ├─ animal    개체
 ├─ species   종
 ├─ log       사육 기록
