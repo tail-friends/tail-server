@@ -111,7 +111,8 @@ Swagger UI: http://localhost:8080/swagger-ui
 ```
 com.tailfriends
 ├─ global    공통 (config, security, exception, response, domain, controller, util)
-├─ auth      인증
+├─ auth      인증 (토큰 발급, 리프레시 토큰)
+├─ user      사용자
 ├─ animal    개체
 ├─ species   종
 ├─ log       사육 기록
@@ -159,6 +160,8 @@ com.tailfriends
 
 - 인증이 필요 없는 경로는 `global/security/SecurityConfig`에만 추가한다. 모든 메서드를 열 때는 `PUBLIC_URLS`, GET만 열 때는 `PUBLIC_GET_URLS`.
 - `/api/v1/admin/**`은 ADMIN 권한이 필요하다.
+- 인증된 요청의 principal은 사용자 ID(`Long`)다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
+- 리프레시 토큰은 원문을 저장하지 않고 `RefreshToken.hash()`(SHA-256)로 저장·조회한다.
 - 비밀값은 `application*.yml`에 `${ENV_NAME}`으로만 넣고, 새 환경 변수는 `.env.example`에 추가한다.
 
 ## 테스트
