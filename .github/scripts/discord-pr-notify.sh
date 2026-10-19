@@ -6,9 +6,17 @@
 #   DRY_RUN=1이면 보내지 않고 JSON만 출력한다.
 set -euo pipefail
 
-if [ -z "${DISCORD_WEBHOOK_URL:-}" ] && [ "${DRY_RUN:-}" != "1" ]; then
+# 붙여 넣을 때 섞인 공백·줄바꿈을 지운다
+webhook_url=$(printf '%s' "${DISCORD_WEBHOOK_URL:-}" | tr -d '[:space:]')
+
+if [ -z "$webhook_url" ] && [ "${DRY_RUN:-}" != "1" ]; then
   echo "DISCORD_WEBHOOK_URL 시크릿이 없어 알림을 건너뜁니다."
   exit 0
+fi
+
+if [ "${DRY_RUN:-}" != "1" ] && [[ "$webhook_url" != https://discord.com/api/webhooks/* ]]; then
+  echo "::error::DISCORD_WEBHOOK_URL이 Discord 웹훅 주소 형식(https://discord.com/api/webhooks/...)이 아닙니다. 시크릿 값을 다시 등록하세요."
+  exit 1
 fi
 
 body=$(printf '%s\n' "${PR_BODY:-}" | tr -d '\r' | sed '/<!--.*-->/d')
@@ -55,5 +63,5 @@ if [ "${DRY_RUN:-}" = "1" ]; then
   exit 0
 fi
 
-curl -fsS -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+curl -fsS -H "Content-Type: application/json" -d "$payload" "$webhook_url"
 echo "Discord 알림을 보냈습니다."
