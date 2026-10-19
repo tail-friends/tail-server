@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # GitHub 이벤트를 Discord 웹훅으로 알린다.
 #
-# 사용법: discord-notify.sh <pr-opened | review | ci-failed>
+# 사용법: discord-notify.sh <pr-opened | pr-merged | review | ci-failed>
 #
 # 공통 환경 변수
 #   DISCORD_WEBHOOK_URL       Discord 채널 웹훅 주소 (시크릿)
@@ -10,11 +10,12 @@
 #   DRY_RUN=1이면 보내지 않고 JSON만 출력한다.
 #
 # pr-opened: PR_TITLE, PR_URL, PR_NUMBER, PR_AUTHOR, PR_BASE, PR_BODY, PR_REVIEWERS(공백 구분 아이디)
+# pr-merged: PR_TITLE, PR_URL, PR_NUMBER, PR_AUTHOR, PR_BASE, PR_BODY, PR_MERGED_BY
 # review:    PR_TITLE, PR_URL, PR_NUMBER, PR_AUTHOR, REVIEW_STATE, REVIEW_AUTHOR, REVIEW_BODY, REVIEW_URL
 # ci-failed: CI_BRANCH, CI_ACTOR, CI_COMMIT_SHA, CI_COMMIT_MESSAGE, CI_RUN_URL
 set -euo pipefail
 
-kind=${1:?"알림 종류가 필요합니다: pr-opened | review | ci-failed"}
+kind=${1:?"알림 종류가 필요합니다: pr-opened | pr-merged | review | ci-failed"}
 
 # 붙여 넣을 때 섞인 공백·줄바꿈을 지운다
 webhook_url=$(printf '%s' "${DISCORD_WEBHOOK_URL:-}" | tr -d '[:space:]')
@@ -86,16 +87,20 @@ field() {
   jq -n --arg name "$1" --arg value "$2" '{ name: $name, value: $value, inline: true }'
 }
 
-pr_opened() {
-  local body overview changes description mentions="" reviewer author_mention
-  body=$(printf '%s\n' "${PR_BODY:-}" | tr -d '\r' | sed '/<!--.*-->/d')
+# PR 본문에서 "## 제목" 아래부터 다음 "## " 전까지
+pr_section() {
+  printf '%s\n' "${PR_BODY:-}" | tr -d '\r' | sed '/<!--.*-->/d' \
+    | awk -v h="## $1" '$0 == h {f=1; next} /^## /{f=0} f'
+}
 
-  # "## 제목" 아래부터 다음 "## " 전까지
-  section() {
-    printf '%s\n' "$body" | awk -v h="## $1" '$0 == h {f=1; next} /^## /{f=0} f'
-  }
-  overview=$(section "개요" | grep -viE '^(closes|fixes|resolves) #' | sed '/^[[:space:]]*$/d' || true)
-  changes=$(section "변경 사항" | grep -vE '^[[:space:]]*-?[[:space:]]*$' | head -n 10 || true)
+pr_overview() {
+  pr_section "개요" | grep -viE '^(closes|fixes|resolves) #' | sed '/^[[:space:]]*$/d' || true
+}
+
+pr_opened() {
+  local overview changes description mentions="" reviewer author_mention
+  overview=$(pr_overview)
+  changes=$(pr_section "변경 사항" | grep -vE '^[[:space:]]*-?[[:space:]]*$' | head -n 10 || true)
 
   description="${overview:-PR 본문에 개요가 없습니다.}"
   if [ -n "$changes" ]; then
@@ -122,6 +127,23 @@ pr_opened() {
     "$description" \
     5814783 \
     "$(jq -n --argjson a "$(field "작성자" "$PR_AUTHOR")" --argjson b "$(field "대상 브랜치" "$PR_BASE")" '[$a, $b]')")"
+}
+
+pr_merged() {
+  local overview
+  overview=$(pr_overview)
+
+  send "$(message \
+    "🎉 #${PR_NUMBER} PR이 ${PR_BASE}에 머지됐어요." \
+    "#${PR_NUMBER} ${PR_TITLE}" \
+    "$PR_URL" \
+    "${overview:-PR 본문에 개요가 없습니다.}" \
+    10181046 \
+    "$(jq -n \
+      --argjson a "$(field "작성자" "$PR_AUTHOR")" \
+      --argjson b "$(field "머지한 사람" "${PR_MERGED_BY:-알 수 없음}")" \
+      --argjson c "$(field "브랜치" "$PR_BASE")" \
+      '[$a, $b, $c]')")"
 }
 
 review() {
@@ -171,6 +193,7 @@ ci_failed() {
 
 case "$kind" in
   pr-opened) pr_opened ;;
+  pr-merged) pr_merged ;;
   review) review ;;
   ci-failed) ci_failed ;;
   *)
