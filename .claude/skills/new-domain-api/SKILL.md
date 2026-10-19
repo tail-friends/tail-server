@@ -94,7 +94,7 @@ public class AnimalController {
 ## 7. 테스트
 
 - 서비스의 규칙 로직은 단위 테스트를 쓴다.
-- 컨트롤러는 `@WebMvcTest(AnimalController.class)` + `@WebMvcTestSupport` + `@WithMockUser`, 서비스는 `@MockitoBean`.
+- 컨트롤러는 `@WebMvcTest(AnimalController.class)` + `@WebMvcTestSupport` + `@WithMockUserId`, 서비스는 `@MockitoBean`.
 - 성공 응답 형식과 주요 에러 코드(검증 실패, NOT_FOUND)를 검증한다.
 - 통합 테스트: `{도메인}/integration/XxxIntegrationTest`가 `IntegrationTestSupport`를 상속해 실제 DB로 API를 호출한다. 마이그레이션과 엔티티가 맞는지(`ddl-auto: validate`)도 여기서 검증된다.
 - 로컬에 Docker가 없으면 통합 테스트는 건너뛰어진다. 그때는 CI 결과로 확인하고, 그 전까지 "실제 DB에서 확인했다"고 쓰지 않는다.
