@@ -11,8 +11,8 @@
 | 레포 | 내용 | 기술 |
 |---|---|---|
 | tail-server (이 레포) | 백엔드 API | Java 21, Spring Boot 3.5, PostgreSQL, Flyway |
-| tail-client | 사용자 앱 | Flutter, Rive |
-| 관리자 웹 | 관리자 웹, 랜딩 | 미정 |
+| tail-app | 사용자 앱 | Flutter, Rive |
+| tail-client | 관리자 웹, 랜딩 | 미정 |
 
 기획·API 명세·ERD는 노션 "꼬리친구" 페이지에 있다. 노션에 접근할 수 없으면 사람에게 해당 내용을 요청한다. 추측으로 API 필드나 테이블을 만들지 않는다.
 
