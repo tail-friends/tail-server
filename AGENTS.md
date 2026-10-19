@@ -166,7 +166,9 @@ com.tailfriends
 - 급여일 계산, 건강 경고 판정처럼 규칙이 있는 로직은 단위 테스트를 같이 작성한다.
 - 컨트롤러 테스트는 `@WebMvcTest` + `@WebMvcTestSupport`(보안 설정 포함)로 작성한다. 인증이 필요한 API는 `@WithMockUser`를 쓴다.
 - 테스트 메서드 이름은 한글로 동작을 설명한다. 예: `안_먹음_기록은_다음_급여일_계산에서_제외한다()`
-- `./gradlew build`가 DB 없이 통과해야 한다. DB가 필요한 테스트는 Testcontainers 도입 후 작성한다.
+- DB가 필요한 테스트는 `IntegrationTestSupport`를 상속한다. Testcontainers로 PostgreSQL을 띄우고 Flyway 마이그레이션을 적용한 상태에서 실행된다. 클래스 이름은 `~IntegrationTest`로 끝낸다.
+- 통합 테스트는 Docker가 없으면 로컬에서 건너뛰고, CI에서는 반드시 실행된다(건너뛰면 CI 실패). 로컬에서 `./gradlew build`가 통과해도 통합 테스트가 건너뛰어졌다면 "확인했다"고 쓰지 않는다.
+- 새 테이블이나 마이그레이션을 추가하면 그 테이블을 쓰는 통합 테스트를 하나 이상 작성한다.
 
 ## 하지 말 것
 

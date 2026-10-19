@@ -1,0 +1,12 @@
+# 통합 테스트 전용. DB 접속 정보는 Testcontainers(@ServiceConnection)가 덮어쓴다.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test
+    username: test
+    password: test
+
+jwt:
+  secret: test-jwt-secret-that-is-at-least-32-bytes-long
+
+cors:
+  allowed-origins: http://localhost:3000

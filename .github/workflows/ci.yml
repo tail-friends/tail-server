@@ -35,6 +35,14 @@ jobs:
       - name: Build
         run: ./gradlew build
 
+      - name: Check integration tests ran
+        run: |
+          ls build/test-results/test/TEST-*IntegrationTest.xml > /dev/null
+          if grep -l 'skipped="[1-9]' build/test-results/test/TEST-*IntegrationTest.xml; then
+            echo "통합 테스트가 건너뛰어졌습니다. Docker를 사용할 수 있는지 확인하세요."
+            exit 1
+          fi
+
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v7
