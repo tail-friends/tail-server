@@ -34,6 +34,15 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# 소셜 로그인 앱 키. 비어 있으면 그 방식으로는 로그인할 수 없다.
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:30m}
