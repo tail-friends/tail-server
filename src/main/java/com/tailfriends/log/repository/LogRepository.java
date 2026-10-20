@@ -19,6 +19,19 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     Optional<Log> findByUserIdAndClientId(Long userId, UUID clientId);
 
     /**
+     * 기간 안 체중 기록, 날짜 오름차순. from, to 모두 포함.
+     */
+    @Query("""
+            select new com.tailfriends.log.repository.WeightPoint(l.logDate, l.weightG) from Log l
+            where l.animal.id = :animalId and l.type = com.tailfriends.log.domain.LogType.WEIGHT
+              and l.logDate between :from and :to
+            order by l.logDate asc, l.id asc
+            """)
+    List<WeightPoint> findWeights(@Param("animalId") Long animalId,
+                                  @Param("from") LocalDate from,
+                                  @Param("to") LocalDate to);
+
+    /**
      * 기록일 최신순, 같은 날이면 나중에 저장한 순. 첫 페이지.
      */
     @Query("""
