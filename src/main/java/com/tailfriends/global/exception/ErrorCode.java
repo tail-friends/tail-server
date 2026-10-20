@@ -22,6 +22,7 @@ public enum ErrorCode {
     // 404
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 주소를 찾을 수 없어요"),
     ANIMAL_NOT_FOUND(HttpStatus.NOT_FOUND, "개체를 찾을 수 없어요"),
+    SPECIES_NOT_FOUND(HttpStatus.NOT_FOUND, "종을 찾을 수 없어요"),
     LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "기록을 찾을 수 없어요"),
 
     // 405
