@@ -1,11 +1,12 @@
 package com.tailfriends.animal.dto;
 
 import com.tailfriends.animal.domain.Animal;
+import com.tailfriends.animal.domain.FeedSchedule;
 import com.tailfriends.animal.domain.Sex;
 import java.time.LocalDate;
 
 /**
- * 개체 상세. feed, shed, weight, character, cooling, alerts, mood는 기록·캐릭터·경고 테이블이 생기면 추가한다.
+ * 개체 상세. shed, weight, character, cooling, alerts, mood는 탈피·체중·캐릭터·경고 계산이 생기면 추가한다.
  */
 public record AnimalResponse(
         Long id,
@@ -15,10 +16,11 @@ public record AnimalResponse(
         Sex sex,
         LocalDate hatchDate,
         int feedIntervalDays,
-        String memo
+        String memo,
+        FeedResponse feed
 ) {
 
-    public static AnimalResponse from(Animal animal) {
+    public static AnimalResponse of(Animal animal, FeedSchedule feed) {
         return new AnimalResponse(
                 animal.getId(),
                 animal.getName(),
@@ -27,6 +29,7 @@ public record AnimalResponse(
                 animal.getSex(),
                 animal.getHatchDate(),
                 animal.getFeedIntervalDays(),
-                animal.getMemo());
+                animal.getMemo(),
+                FeedResponse.from(feed));
     }
 }

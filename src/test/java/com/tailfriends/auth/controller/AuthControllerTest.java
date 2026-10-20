@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tailfriends.auth.dto.OAuthLoginResponse;
 import com.tailfriends.auth.dto.TokenResponse;
+import com.tailfriends.auth.service.OAuthService;
 import com.tailfriends.auth.service.TokenService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
@@ -30,7 +32,52 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private OAuthService oauthService;
+
+    @MockitoBean
     private TokenService tokenService;
+
+    @Test
+    void 인증_없이_소셜_로그인하고_명세_형식으로_응답한다() throws Exception {
+        given(oauthService.login(any())).willReturn(new OAuthLoginResponse("access", "refresh", true,
+                new OAuthLoginResponse.LoginUser(1L, "망고집사")));
+
+        mockMvc.perform(post("/api/v1/auth/oauth/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "provider": "KAKAO", "code": "auth-code", "redirectUri": "https://app.example/callback" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").value("access"))
+                .andExpect(jsonPath("$.data.refreshToken").value("refresh"))
+                .andExpect(jsonPath("$.data.isNewUser").value(true))
+                .andExpect(jsonPath("$.data.user.id").value(1))
+                .andExpect(jsonPath("$.data.user.nickname").value("망고집사"));
+    }
+
+    @Test
+    void 로그인_방식이_정해진_값이_아니면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/oauth/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "provider": "NAVER", "code": "auth-code", "redirectUri": "https://app.example/callback" }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void 인가_코드가_틀리면_401_OAUTH_FAILED() throws Exception {
+        given(oauthService.login(any())).willThrow(new BusinessException(ErrorCode.OAUTH_FAILED));
+
+        mockMvc.perform(post("/api/v1/auth/oauth/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "provider": "GOOGLE", "code": "expired", "redirectUri": "https://app.example/callback" }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("OAUTH_FAILED"));
+    }
 
     @Test
     void 인증_없이_토큰을_재발급한다() throws Exception {

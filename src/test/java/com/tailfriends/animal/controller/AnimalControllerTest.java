@@ -11,9 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tailfriends.animal.domain.FeedStatus;
 import com.tailfriends.animal.domain.Sex;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
+import com.tailfriends.animal.dto.FeedResponse;
 import com.tailfriends.animal.service.AnimalService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
@@ -75,7 +77,8 @@ class AnimalControllerTest {
     @WithMockUserId(7L)
     void 개체_상세를_명세_형식으로_돌려준다() throws Exception {
         given(animalService.getAnimal(7L, 12L)).willReturn(new AnimalResponse(
-                12L, "망고", "레오파드 게코", "탠저린", Sex.FEMALE, LocalDate.of(2025, 6, 20), 4, "핫존 32℃"));
+                12L, "망고", "레오파드 게코", "탠저린", Sex.FEMALE, LocalDate.of(2025, 6, 20), 4, "핫존 32℃",
+                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1)));
 
         mockMvc.perform(get("/api/v1/animals/12"))
                 .andExpect(status().isOk())
@@ -83,7 +86,10 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.species").value("레오파드 게코"))
                 .andExpect(jsonPath("$.data.sex").value("FEMALE"))
                 .andExpect(jsonPath("$.data.hatchDate").value("2025-06-20"))
-                .andExpect(jsonPath("$.data.feedIntervalDays").value(4));
+                .andExpect(jsonPath("$.data.feedIntervalDays").value(4))
+                .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
+                .andExpect(jsonPath("$.data.feed.lastDate").value("2026-10-14"))
+                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"));
     }
 
     @Test

@@ -1,8 +1,11 @@
 package com.tailfriends.auth.controller;
 
 import com.tailfriends.auth.dto.LogoutRequest;
+import com.tailfriends.auth.dto.OAuthLoginRequest;
+import com.tailfriends.auth.dto.OAuthLoginResponse;
 import com.tailfriends.auth.dto.TokenReissueRequest;
 import com.tailfriends.auth.dto.TokenResponse;
+import com.tailfriends.auth.service.OAuthService;
 import com.tailfriends.auth.service.TokenService;
 import com.tailfriends.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +27,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private final OAuthService oauthService;
     private final TokenService tokenService;
+
+    @Operation(summary = "소셜 로그인",
+            description = "앱이 받은 인가 코드로 가입 또는 로그인하고 토큰을 발급한다. 처음 로그인하면 isNewUser: true. "
+                    + "지금은 KAKAO, GOOGLE만 지원한다.")
+    @PostMapping("/oauth/callback")
+    public ApiResponse<OAuthLoginResponse> login(@Valid @RequestBody OAuthLoginRequest request) {
+        return ApiResponse.success(oauthService.login(request));
+    }
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰으로 액세스 토큰을 다시 발급한다. 리프레시 토큰도 함께 교체한다.")
     @PutMapping("/reissue")
