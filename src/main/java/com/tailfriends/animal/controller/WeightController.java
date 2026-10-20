@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,8 +26,8 @@ public class WeightController {
     @GetMapping("/api/v1/animals/{animalId}/weights")
     public ApiResponse<WeightGraphResponse> getWeights(@AuthenticationPrincipal Long userId,
                                                        @PathVariable Long animalId,
-                                                       @RequestParam(required = false) LocalDate from,
-                                                       @RequestParam(required = false) LocalDate to) {
+                                                       @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+                                                       @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
         return ApiResponse.success(weightService.getWeights(userId, animalId, from, to));
     }
 }
