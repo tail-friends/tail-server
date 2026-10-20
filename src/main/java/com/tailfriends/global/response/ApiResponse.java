@@ -28,6 +28,13 @@ public class ApiResponse<T> {
     }
 
     public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
-        return new ApiResponse<>(false, null, new ErrorResponse(errorCode.getCode(), message));
+        return error(errorCode, message, null);
+    }
+
+    /**
+     * 실패해도 data를 함께 돌려줘야 하는 경우에만 쓴다. (예: DUPLICATE_CLIENT_ID)
+     */
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String message, T data) {
+        return new ApiResponse<>(false, data, new ErrorResponse(errorCode.getCode(), message));
     }
 }

@@ -21,8 +21,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
-        return toResponse(e.getErrorCode(), e.getMessage());
+    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ApiResponse.error(errorCode, e.getMessage(), e.getData()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
