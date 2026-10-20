@@ -24,7 +24,7 @@ class DevLoginIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void 테스트_로그인으로_받은_토큰으로_API를_호출한다() throws Exception {
-        String name = "tester-" + UUID.randomUUID();
+        String name = "tester-" + shortId();
         String body = login("{ \"name\": \"%s\" }".formatted(name))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.role").value("KEEPER"))
@@ -40,9 +40,16 @@ class DevLoginIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void role을_보내면_그_권한으로_바꾼다() throws Exception {
-        login("{ \"name\": \"admin-%s\", \"role\": \"ADMIN\" }".formatted(UUID.randomUUID()))
+        login("{ \"name\": \"admin-%s\", \"role\": \"ADMIN\" }".formatted(shortId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.role").value("ADMIN"));
+    }
+
+    /**
+     * name은 30자까지라 UUID 앞 8자만 쓴다.
+     */
+    private static String shortId() {
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 
     private ResultActions login(String content) throws Exception {
