@@ -19,6 +19,27 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     Optional<Log> findByUserIdAndClientId(Long userId, UUID clientId);
 
     /**
+     * 마지막 급여일. "안 먹음" 기록은 빼고 본다. (기능명세서 4-1)
+     */
+    @Query("""
+            select max(l.logDate) from Log l
+            where l.animal.id = :animalId
+              and l.type = com.tailfriends.log.domain.LogType.FEED and l.refused = false
+            """)
+    Optional<LocalDate> findLastFedDate(@Param("animalId") Long animalId);
+
+    /**
+     * 여러 개체의 마지막 급여일을 한 번에 조회한다. 급여 기록이 없는 개체는 결과에 없다.
+     */
+    @Query("""
+            select new com.tailfriends.log.repository.LastFedDate(l.animal.id, max(l.logDate)) from Log l
+            where l.animal.id in :animalIds
+              and l.type = com.tailfriends.log.domain.LogType.FEED and l.refused = false
+            group by l.animal.id
+            """)
+    List<LastFedDate> findLastFedDates(@Param("animalIds") Collection<Long> animalIds);
+
+    /**
      * 기록일 최신순, 같은 날이면 나중에 저장한 순. 첫 페이지.
      */
     @Query("""

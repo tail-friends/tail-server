@@ -11,7 +11,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
+import com.tailfriends.animal.domain.FeedStatus;
 import com.tailfriends.animal.repository.AnimalRepository;
+import com.tailfriends.animal.service.FeedService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.log.domain.Log;
@@ -19,6 +21,7 @@ import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogCreateRequest;
 import com.tailfriends.log.dto.LogCreateResponse;
+import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.dto.LogListResponse;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.user.domain.Provider;
@@ -46,7 +49,8 @@ class LogServiceTest {
     private final LogRepository logRepository = mock(LogRepository.class);
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final LogService logService = new LogService(logRepository, animalRepository, userRepository, CLOCK);
+    private final LogService logService = new LogService(logRepository, animalRepository, userRepository,
+            new FeedService(logRepository, CLOCK), CLOCK);
 
     @Test
     void 기록일은_한국_날짜로_오늘까지_허용한다() {
@@ -56,6 +60,18 @@ class LogServiceTest {
         Long id = logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 20))).id();
 
         assertThat(id).isEqualTo(902L);
+    }
+
+    @Test
+    void 기록을_저장하면_다시_계산한_급여_상태를_함께_돌려준다() {
+        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
+        given(logRepository.findLastFedDate(ANIMAL_ID)).willReturn(Optional.of(LocalDate.of(2026, 10, 20)));
+
+        LogCreateResponse response = logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 20)));
+
+        assertThat(response.feed().status()).isEqualTo(FeedStatus.UPCOMING);
+        assertThat(response.feed().nextDate()).isEqualTo(LocalDate.of(2026, 10, 24));
     }
 
     @Test
@@ -87,7 +103,7 @@ class LogServiceTest {
         assertThatThrownBy(() -> logService.create(USER_ID, weightRequest(clientId, LocalDate.of(2026, 10, 18))))
                 .isInstanceOfSatisfying(BusinessException.class, e -> {
                     assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_CLIENT_ID);
-                    assertThat(e.getData()).isEqualTo(new LogCreateResponse(880L));
+                    assertThat(e.getData()).isEqualTo(new LogIdResponse(880L));
                 });
         verify(logRepository, never()).save(any());
     }
