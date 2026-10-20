@@ -38,7 +38,38 @@ com.tailfriends
 
 도메인 패키지 안은 `controller / service / repository / domain / dto`로 나눕니다.
 
-## 로컬 실행
+## 앱·웹 팀: 서버 띄우기 (Docker)
+
+JDK 없이 Docker만 있으면 서버와 DB를 한 번에 띄울 수 있습니다. ([Docker Desktop](https://www.docker.com/products/docker-desktop/) 설치)
+
+```bash
+git clone https://github.com/tail-friends/tail-server.git
+cd tail-server
+cp .env.example .env                        # 처음 한 번. 로컬은 값을 바꾸지 않아도 됩니다
+docker compose --profile app up -d --build  # 서버 + DB 실행 (처음엔 빌드 때문에 몇 분 걸림)
+```
+
+- Swagger UI: http://localhost:8080/swagger-ui
+- 최신 코드로 다시 띄우기: `git pull` 후 같은 명령을 다시 실행
+- 끄기: `docker compose --profile app down` (DB 데이터는 남음)
+- DB까지 처음부터: `docker compose --profile app down -v`
+- 서버 로그 보기: `docker compose --profile app logs -f app`
+
+### 토큰 받기 (테스트 로그인)
+
+로컬에서는 소셜 로그인 대신 테스트 로그인으로 토큰을 받습니다. 같은 `name`이면 같은 사용자입니다.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/dev/login \
+  -H 'Content-Type: application/json' \
+  -d '{ "name": "app-tester" }'
+```
+
+- 관리자 API를 쓰려면 `{ "name": "admin", "role": "ADMIN" }`
+- 응답의 `accessToken`을 `Authorization: Bearer {accessToken}` 헤더에 넣습니다. Swagger에서는 오른쪽 위 **Authorize**에 토큰만 붙여 넣습니다.
+- 테스트 로그인은 `docker compose --profile app`으로 띄울 때만 켜집니다. 운영(`prod` 프로필)에서는 항상 꺼져 있습니다.
+
+## 로컬 실행 (백엔드 개발)
 
 ### 1. 환경 변수 파일 만들기
 
