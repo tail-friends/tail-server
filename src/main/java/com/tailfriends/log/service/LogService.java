@@ -1,7 +1,9 @@
 package com.tailfriends.log.service;
 
 import com.tailfriends.animal.domain.Animal;
+import com.tailfriends.animal.dto.FeedResponse;
 import com.tailfriends.animal.repository.AnimalRepository;
+import com.tailfriends.animal.service.FeedService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.util.KstDate;
@@ -9,6 +11,7 @@ import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogCreateRequest;
 import com.tailfriends.log.dto.LogCreateResponse;
+import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.dto.LogListResponse;
 import com.tailfriends.log.dto.LogResponse;
 import com.tailfriends.log.dto.LogUpdateRequest;
@@ -32,6 +35,7 @@ public class LogService {
     private final LogRepository logRepository;
     private final AnimalRepository animalRepository;
     private final UserRepository userRepository;
+    private final FeedService feedService;
     private final Clock clock;
 
     /**
@@ -44,7 +48,7 @@ public class LogService {
         if (request.clientId() != null) {
             logRepository.findByUserIdAndClientId(userId, request.clientId()).ifPresent(existing -> {
                 throw new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
-                        ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogCreateResponse(existing.getId()));
+                        ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogIdResponse(existing.getId()));
             });
         }
 
@@ -56,7 +60,7 @@ public class LogService {
                 request.date(),
                 request.memo(),
                 request.toDetails()));
-        return new LogCreateResponse(log.getId());
+        return new LogCreateResponse(log.getId(), FeedResponse.from(feedService.scheduleOf(animal)));
     }
 
     /**
