@@ -21,7 +21,12 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
+import com.tailfriends.health.domain.AlertStatus;
+import com.tailfriends.health.domain.AlertType;
+import com.tailfriends.health.dto.AlertResponse;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -78,7 +83,9 @@ class AnimalControllerTest {
     void 개체_상세를_명세_형식으로_돌려준다() throws Exception {
         given(animalService.getAnimal(7L, 12L)).willReturn(new AnimalResponse(
                 12L, "망고", "레오파드 게코", "탠저린", Sex.FEMALE, LocalDate.of(2025, 6, 20), 4, "핫존 32℃",
-                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1)));
+                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1),
+                List.of(new AlertResponse(77L, 12L, AlertType.WEIGHT_LOSS_ALERT, "최근 30일 동안 체중이 12% 줄었어요",
+                        AlertStatus.OPEN, Instant.parse("2026-10-18T09:00:00Z")))));
 
         mockMvc.perform(get("/api/v1/animals/12"))
                 .andExpect(status().isOk())
@@ -89,7 +96,9 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.feedIntervalDays").value(4))
                 .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
                 .andExpect(jsonPath("$.data.feed.lastDate").value("2026-10-14"))
-                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"));
+                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"))
+                .andExpect(jsonPath("$.data.alerts[0].type").value("WEIGHT_LOSS_ALERT"))
+                .andExpect(jsonPath("$.data.alerts[0].createdAt").value("2026-10-18T09:00:00Z"));
     }
 
     @Test
