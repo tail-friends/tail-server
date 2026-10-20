@@ -12,6 +12,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.species.domain.Species;
 import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.repository.UserRepository;
@@ -33,6 +34,7 @@ public class AnimalService {
     private final SpeciesRepository speciesRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final HealthAlertService healthAlertService;
     private final Clock clock;
 
     @Transactional
@@ -66,14 +68,15 @@ public class AnimalService {
     public AnimalListResponse getAnimals(Long userId) {
         List<Animal> animals = animalRepository.findAllByUserIdOrderByIdAsc(userId);
         Map<Long, FeedSchedule> feeds = feedService.schedulesOf(animals);
+        Map<Long, Long> alertCounts = healthAlertService.openCountsOf(animals);
         return new AnimalListResponse(animals.stream()
-                .map(animal -> AnimalSummaryResponse.of(animal, feeds.get(animal.getId())))
+                .map(animal -> AnimalSummaryResponse.of(animal, feeds.get(animal.getId()),
+                        alertCounts.getOrDefault(animal.getId(), 0L)))
                 .toList());
     }
 
     public AnimalResponse getAnimal(Long userId, Long animalId) {
-        Animal animal = findAnimal(userId, animalId);
-        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
+        return toResponse(findAnimal(userId, animalId));
     }
 
     @Transactional
@@ -93,12 +96,16 @@ public class AnimalService {
                 request.hatchDate(),
                 request.feedIntervalDays(),
                 request.memo());
-        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
+        return toResponse(animal);
     }
 
     @Transactional
     public void delete(Long userId, Long animalId) {
         animalRepository.delete(findAnimal(userId, animalId));
+    }
+
+    private AnimalResponse toResponse(Animal animal) {
+        return AnimalResponse.of(animal, feedService.scheduleOf(animal), healthAlertService.openAlertsOf(animal));
     }
 
     /**
