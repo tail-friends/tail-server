@@ -134,6 +134,7 @@ com.tailfriends
 - 컨트롤러는 항상 `ApiResponse<T>`를 반환한다. 성공은 `ApiResponse.success(data)`, 데이터가 없으면 `ApiResponse.success()`.
   - 예외: 명세가 `204`(본문 없음)인 API는 `@ResponseStatus(HttpStatus.NO_CONTENT)`와 `void`로 반환한다. (예: 로그아웃)
 - 실패는 `throw new BusinessException(ErrorCode.XXX)`로 던진다. 컨트롤러에서 직접 에러 응답을 만들지 않는다.
+  - 실패 응답에도 data가 필요하면(예: `DUPLICATE_CLIENT_ID`의 기존 기록 ID) `new BusinessException(code, message, data)`로 던진다.
 - 새 에러 코드는 `global/exception/ErrorCode`에 추가하고, 노션 API 명세서의 공통 에러 코드 표에도 추가한다.
 - 요청 검증은 DTO에 Bean Validation 어노테이션을 달고 컨트롤러 파라미터에 `@Valid`를 붙인다. 검증 실패는 `GlobalExceptionHandler`가 `INVALID_INPUT`으로 바꾼다.
 - 엔티티를 컨트롤러 밖으로 내보내지 않는다. 서비스에서 DTO로 바꿔 반환한다.
