@@ -1,6 +1,7 @@
 package com.tailfriends.animal.service;
 
 import com.tailfriends.animal.domain.Animal;
+import com.tailfriends.animal.domain.FeedSchedule;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalListResponse;
@@ -16,6 +17,8 @@ import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,7 @@ public class AnimalService {
     private final AnimalRepository animalRepository;
     private final SpeciesRepository speciesRepository;
     private final UserRepository userRepository;
+    private final FeedService feedService;
     private final Clock clock;
 
     @Transactional
@@ -60,13 +64,16 @@ public class AnimalService {
     }
 
     public AnimalListResponse getAnimals(Long userId) {
-        return new AnimalListResponse(animalRepository.findAllByUserIdOrderByIdAsc(userId).stream()
-                .map(AnimalSummaryResponse::from)
+        List<Animal> animals = animalRepository.findAllByUserIdOrderByIdAsc(userId);
+        Map<Long, FeedSchedule> feeds = feedService.schedulesOf(animals);
+        return new AnimalListResponse(animals.stream()
+                .map(animal -> AnimalSummaryResponse.of(animal, feeds.get(animal.getId())))
                 .toList());
     }
 
     public AnimalResponse getAnimal(Long userId, Long animalId) {
-        return AnimalResponse.from(findAnimal(userId, animalId));
+        Animal animal = findAnimal(userId, animalId);
+        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
     }
 
     @Transactional
@@ -86,7 +93,7 @@ public class AnimalService {
                 request.hatchDate(),
                 request.feedIntervalDays(),
                 request.memo());
-        return AnimalResponse.from(animal);
+        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
     }
 
     @Transactional
