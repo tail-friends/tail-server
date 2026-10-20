@@ -16,6 +16,7 @@ import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
 import com.tailfriends.species.domain.Species;
@@ -41,8 +42,9 @@ class AnimalServiceTest {
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final SpeciesRepository speciesRepository = mock(SpeciesRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final AnimalService animalService =
-            new AnimalService(animalRepository, speciesRepository, userRepository, CLOCK);
+    private final LogRepository logRepository = mock(LogRepository.class);
+    private final AnimalService animalService = new AnimalService(animalRepository, speciesRepository, userRepository,
+            new FeedService(logRepository, CLOCK), CLOCK);
 
     @Test
     void 종_ID로_등록하면_종_이름을_종_목록에서_가져온다() {

@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tailfriends.animal.domain.FeedStatus;
+import com.tailfriends.animal.dto.FeedResponse;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
@@ -19,6 +21,7 @@ import com.tailfriends.global.support.WithMockUserId;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.domain.ShedStage;
 import com.tailfriends.log.dto.LogCreateResponse;
+import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.dto.LogListResponse;
 import com.tailfriends.log.dto.LogResponse;
 import com.tailfriends.log.service.LogService;
@@ -49,19 +52,22 @@ class LogControllerTest {
     @Test
     @WithMockUserId(7L)
     void 기록을_작성하면_201과_ID를_돌려준다() throws Exception {
-        given(logService.create(eq(7L), any())).willReturn(new LogCreateResponse(902L));
+        given(logService.create(eq(7L), any())).willReturn(new LogCreateResponse(902L,
+                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 18), LocalDate.of(2026, 10, 22), 2)));
 
         mockMvc.perform(post("/api/v1/logs").contentType(MediaType.APPLICATION_JSON).content(FEED_BODY))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(902));
+                .andExpect(jsonPath("$.data.id").value(902))
+                .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
+                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-22"));
     }
 
     @Test
     @WithMockUserId
     void 같은_clientId로_다시_보내면_409와_기존_기록_ID를_돌려준다() throws Exception {
         given(logService.create(any(), any())).willThrow(new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
-                ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogCreateResponse(880L)));
+                ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogIdResponse(880L)));
 
         mockMvc.perform(post("/api/v1/logs").contentType(MediaType.APPLICATION_JSON).content(FEED_BODY))
                 .andExpect(status().isConflict())
