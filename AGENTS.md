@@ -166,6 +166,7 @@ com.tailfriends
 - 인증된 요청의 principal은 사용자 ID(`Long`)다. 컨트롤러에서는 `@AuthenticationPrincipal Long userId`로 받는다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
 - 리프레시 토큰은 원문을 저장하지 않고 `RefreshToken.hash()`(SHA-256)로 저장·조회한다.
 - 비밀값은 `application*.yml`에 `${ENV_NAME}`으로만 넣고, 새 환경 변수는 `.env.example`에 추가한다.
+- 테스트 로그인(`POST /api/v1/dev/login`)은 `dev.login.enabled=true`일 때만 생긴다. 로컬 Docker 실행용이며, `application-prod.yml`에서 항상 끈다. 이 설정을 운영에서 켜지 않는다.
 
 ## 테스트
 
