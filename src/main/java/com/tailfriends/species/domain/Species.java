@@ -1,6 +1,8 @@
 package com.tailfriends.species.domain;
 
 import com.tailfriends.global.domain.BaseTimeEntity;
+import com.tailfriends.global.exception.BusinessException;
+import com.tailfriends.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -80,5 +82,51 @@ public class Species extends BaseTimeEntity {
         this.humidityMax = humidityMax;
         this.defaultHome = defaultHome;
         this.hidden = hidden;
+        validateRanges();
+    }
+
+    /**
+     * null인 값은 바꾸지 않는다.
+     *
+     * @throws BusinessException 바꾼 뒤 온습도 범위의 최소가 최대보다 크면 INVALID_INPUT
+     */
+    public void update(SpeciesChange change) {
+        name = valueOr(change.name(), name);
+        shape = valueOr(change.shape(), shape);
+        spiky = valueOr(change.spiky(), spiky);
+        feedIntervalDays = valueOr(change.feedIntervalDays(), feedIntervalDays);
+        shedIntervalDays = valueOr(change.shedIntervalDays(), shedIntervalDays);
+        hotMin = valueOr(change.hotMin(), hotMin);
+        hotMax = valueOr(change.hotMax(), hotMax);
+        coolMin = valueOr(change.coolMin(), coolMin);
+        coolMax = valueOr(change.coolMax(), coolMax);
+        humidityMin = valueOr(change.humidityMin(), humidityMin);
+        humidityMax = valueOr(change.humidityMax(), humidityMax);
+        defaultHome = valueOr(change.defaultHome(), defaultHome);
+        hidden = valueOr(change.hidden(), hidden);
+        validateRanges();
+    }
+
+    /**
+     * 새 개체 등록의 종 목록에서만 빠진다. 이미 이 종으로 등록된 개체는 그대로다.
+     */
+    public void hide() {
+        hidden = true;
+    }
+
+    private void validateRanges() {
+        requireOrdered(hotMin, hotMax, "핫존 온도");
+        requireOrdered(coolMin, coolMax, "쿨존 온도");
+        requireOrdered(humidityMin, humidityMax, "습도");
+    }
+
+    private static <T extends Comparable<T>> void requireOrdered(T min, T max, String label) {
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, label + "의 최소값이 최대값보다 커요");
+        }
+    }
+
+    private static <T> T valueOr(T value, T fallback) {
+        return value != null ? value : fallback;
     }
 }

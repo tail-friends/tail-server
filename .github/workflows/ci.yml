@@ -49,3 +49,45 @@ jobs:
         with:
           name: test-report
           path: build/reports/tests/test
+
+  # 앱·웹 팀이 쓰는 로컬 실행 환경(docker compose --profile app)이 실제로 뜨는지 확인한다
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Start server and DB
+        run: |
+          cp .env.example .env
+          docker compose --profile app up -d --build
+
+      - name: Wait for server
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:8080/api/v1/health-check > /dev/null; then
+              echo "서버가 떴습니다."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "서버가 2분 안에 뜨지 않았습니다."
+          docker compose --profile app logs app
+          exit 1
+
+      - name: Call API with test login
+        run: |
+          token=$(curl -fsS -X POST http://localhost:8080/api/v1/dev/login \
+            -H 'Content-Type: application/json' -d '{"name":"ci"}' | jq -r '.data.accessToken')
+          curl -fsS http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token"
+
+      - name: Show server logs
+        if: failure()
+        run: docker compose --profile app logs app
+
+      - name: Stop
+        if: always()
+        run: docker compose --profile app down -v
