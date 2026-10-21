@@ -54,4 +54,8 @@ public class User extends BaseTimeEntity {
         this.role = Role.KEEPER;
         this.points = 0;
     }
+
+    public void changeRole(Role role) {
+        this.role = role;
+    }
 }

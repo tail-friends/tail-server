@@ -26,4 +26,15 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
         return MeResponse.of(user, animalRepository.countByUserId(userId));
     }
+
+    /**
+     * 계정을 즉시 지운다. 개체·기록·건강 경고·캐릭터·리프레시 토큰은 DB의 ON DELETE CASCADE로 함께 지워진다.
+     * 이미 없는 사용자면 getMe와 같이 UNAUTHORIZED.
+     */
+    @Transactional
+    public void withdraw(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        userRepository.delete(user);
+    }
 }
