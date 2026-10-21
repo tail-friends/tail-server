@@ -1,7 +1,11 @@
 package com.tailfriends.user.controller;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,5 +59,24 @@ class UserControllerTest {
     void 로그인하지_않으면_401() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUserId(1L)
+    void 탈퇴하면_본문_없이_204() throws Exception {
+        mockMvc.perform(delete("/api/v1/auth/me"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+        verify(userService).withdraw(1L);
+    }
+
+    @Test
+    @WithMockUserId(1L)
+    void 이미_탈퇴한_사용자면_401() throws Exception {
+        willThrow(new BusinessException(ErrorCode.UNAUTHORIZED)).given(userService).withdraw(1L);
+
+        mockMvc.perform(delete("/api/v1/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 }

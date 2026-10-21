@@ -22,6 +22,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_URLS = {
             "/api/v1/auth/oauth/callback",
             "/api/v1/auth/reissue",
+            "/api/v1/dev/login", // dev.login.enabled일 때만 컨트롤러가 생긴다. 꺼져 있으면 404
             "/api/v1/health-check",
             "/swagger-ui/**",
             "/v3/api-docs/**",
@@ -29,7 +30,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_GET_URLS = {
-            "/api/v1/species"
+            "/api/v1/species",
+            "/api/v1/species/*/guide"
     };
 
     private final JwtProvider jwtProvider;
