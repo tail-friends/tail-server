@@ -41,6 +41,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void BusinessException에_data가_있으면_실패_응답에도_data를_담는다() throws Exception {
+        mockMvc.perform(get("/test/business-with-data"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.id").value(902))
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_CLIENT_ID"));
+    }
+
+    @Test
     void 검증에_실패하면_INVALID_INPUT과_틀린_필드를_응답한다() throws Exception {
         mockMvc.perform(post("/test/valid")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,6 +74,12 @@ class GlobalExceptionHandlerTest {
             throw new BusinessException(ErrorCode.ANIMAL_NOT_FOUND);
         }
 
+        @GetMapping("/test/business-with-data")
+        void businessWithData() {
+            throw new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
+                    ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new TestData(902L));
+        }
+
         @PostMapping("/test/valid")
         void valid(@Valid @RequestBody TestRequest request) {
         }
@@ -76,5 +91,8 @@ class GlobalExceptionHandlerTest {
     }
 
     record TestRequest(@NotBlank String name) {
+    }
+
+    record TestData(Long id) {
     }
 }
