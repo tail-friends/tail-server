@@ -29,7 +29,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_GET_URLS = {
-            "/api/v1/species"
+            "/api/v1/species",
+            "/files/**"
     };
 
     private final JwtProvider jwtProvider;
