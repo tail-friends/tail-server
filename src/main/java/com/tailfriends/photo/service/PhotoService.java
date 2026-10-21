@@ -28,6 +28,7 @@ public class PhotoService {
 
     static final int THUMBNAIL_SIZE = 128;
     static final int ORIGINAL_SIZE = 1600;
+    static final int ANALYSIS_SIZE = 1024;
 
     private final PhotoRepository photoRepository;
     private final AnimalRepository animalRepository;
@@ -37,27 +38,34 @@ public class PhotoService {
 
     /**
      * 128px 썸네일을 만들고, keepOriginal이면 긴 변 1600px로 줄인 원본도 보관한다. 모두 JPG로 저장한다.
+     * 원본을 보관하지 않는 캐릭터 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
      */
     @Transactional
     public PhotoUploadResponse upload(Long userId, Long animalId, PhotoPurpose purpose, boolean keepOriginal,
                                       MultipartFile file) {
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
+        boolean keepAnalysisCopy = !keepOriginal && purpose == PhotoPurpose.CHARACTER;
+        byte[] bytes = read(file);
         List<byte[]> images = keepOriginal
-                ? imageResizer.toJpegs(read(file), THUMBNAIL_SIZE, ORIGINAL_SIZE)
-                : imageResizer.toJpegs(read(file), THUMBNAIL_SIZE);
+                ? imageResizer.toJpegs(bytes, THUMBNAIL_SIZE, ORIGINAL_SIZE)
+                : keepAnalysisCopy
+                        ? imageResizer.toJpegs(bytes, THUMBNAIL_SIZE, ANALYSIS_SIZE)
+                        : imageResizer.toJpegs(bytes, THUMBNAIL_SIZE);
 
         String name = "photos/" + UUID.randomUUID();
         String thumbnailKey = name + "_thumb.jpg";
         String originalKey = keepOriginal ? name + "_original.jpg" : null;
+        String analysisKey = keepAnalysisCopy ? name + "_analysis.jpg" : null;
+        String secondKey = originalKey != null ? originalKey : analysisKey;
 
         List<String> savedKeys = new ArrayList<>();
         try {
             photoStorage.save(thumbnailKey, images.get(0));
             savedKeys.add(thumbnailKey);
-            if (originalKey != null) {
-                photoStorage.save(originalKey, images.get(1));
-                savedKeys.add(originalKey);
+            if (secondKey != null) {
+                photoStorage.save(secondKey, images.get(1));
+                savedKeys.add(secondKey);
             }
             Photo photo = photoRepository.save(Photo.builder()
                     .user(userRepository.getReferenceById(userId))
@@ -65,6 +73,7 @@ public class PhotoService {
                     .purpose(purpose)
                     .thumbnailKey(thumbnailKey)
                     .originalKey(originalKey)
+                    .analysisKey(analysisKey)
                     .build());
             return new PhotoUploadResponse(photo.getId(), photoStorage.urlOf(thumbnailKey), originalKey != null);
         } catch (RuntimeException e) {
