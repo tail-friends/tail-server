@@ -38,8 +38,11 @@ public class UserSettings extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalTime notifyTime;
 
+    /**
+     * 길이 1인 문자열은 Hibernate가 CHAR(1)로 보므로 DB와 같은 varchar(1)로 적는다.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 1)
+    @Column(nullable = false, columnDefinition = "varchar(1)")
     private TempUnit tempUnit;
 
     @Column(nullable = false)
