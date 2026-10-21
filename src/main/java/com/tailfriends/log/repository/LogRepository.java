@@ -90,6 +90,26 @@ public interface LogRepository extends JpaRepository<Log, Long> {
                                   @Param("to") LocalDate to);
 
     /**
+     * 최근 탈피 기록(블루 단계 포함), 최신순. 개수는 pageable로 정한다.
+     */
+    @Query("""
+            select new com.tailfriends.log.repository.ShedEntry(l.logDate, l.shedStage, l.shedComplete) from Log l
+            where l.animal.id = :animalId and l.type = com.tailfriends.log.domain.LogType.SHED
+            order by l.logDate desc, l.id desc
+            """)
+    List<ShedEntry> findLatestSheds(@Param("animalId") Long animalId, Pageable pageable);
+
+    /**
+     * 최근 체중(g), 최신순. 개수는 pageable로 정한다.
+     */
+    @Query("""
+            select l.weightG from Log l
+            where l.animal.id = :animalId and l.type = com.tailfriends.log.domain.LogType.WEIGHT
+            order by l.logDate desc, l.id desc
+            """)
+    List<BigDecimal> findLatestWeights(@Param("animalId") Long animalId, Pageable pageable);
+
+    /**
      * 기록일 최신순, 같은 날이면 나중에 저장한 순. 첫 페이지.
      */
     @Query("""
