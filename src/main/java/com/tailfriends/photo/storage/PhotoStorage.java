@@ -7,6 +7,8 @@ public interface PhotoStorage {
 
     void save(String key, byte[] bytes);
 
+    byte[] read(String key);
+
     void delete(String key);
 
     String urlOf(String key);
