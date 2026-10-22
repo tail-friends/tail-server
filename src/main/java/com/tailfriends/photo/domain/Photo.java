@@ -15,6 +15,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -63,5 +66,12 @@ public class Photo extends BaseTimeEntity {
         this.purpose = purpose;
         this.thumbnailKey = thumbnailKey;
         this.originalKey = originalKey;
+    }
+
+    /**
+     * 저장소에 있는 이 사진의 파일 key. 원본을 보관하지 않았으면 썸네일만.
+     */
+    public List<String> fileKeys() {
+        return Stream.of(thumbnailKey, originalKey).filter(Objects::nonNull).toList();
     }
 }
