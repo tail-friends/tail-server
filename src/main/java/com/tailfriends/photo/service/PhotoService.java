@@ -9,7 +9,9 @@ import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
+import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.repository.UserRepository;
+import com.tailfriends.user.service.ConsentService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,22 +36,25 @@ public class PhotoService {
     private final UserRepository userRepository;
     private final PhotoStorage photoStorage;
     private final ImageResizer imageResizer;
+    private final ConsentService consentService;
 
     /**
-     * 128px 썸네일을 만들고, keepOriginal이면 긴 변 1600px로 줄인 원본도 보관한다. 모두 JPG로 저장한다.
+     * 128px 썸네일을 만들고, keepOriginal이면서 원본 사진 보관에 동의한 사용자면 긴 변 1600px로 줄인 원본도 보관한다.
+     * 동의하지 않았으면 원본은 보관하지 않고 originalKept=false로 알려준다. 모두 JPG로 저장한다.
      */
     @Transactional
     public PhotoUploadResponse upload(Long userId, Long animalId, PhotoPurpose purpose, boolean keepOriginal,
                                       MultipartFile file) {
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
-        List<byte[]> images = keepOriginal
+        boolean keep = keepOriginal && consentService.isAgreed(userId, ConsentType.KEEP_ORIGINAL);
+        List<byte[]> images = keep
                 ? imageResizer.toJpegs(read(file), THUMBNAIL_SIZE, ORIGINAL_SIZE)
                 : imageResizer.toJpegs(read(file), THUMBNAIL_SIZE);
 
         String name = "photos/" + UUID.randomUUID();
         String thumbnailKey = name + "_thumb.jpg";
-        String originalKey = keepOriginal ? name + "_original.jpg" : null;
+        String originalKey = keep ? name + "_original.jpg" : null;
 
         List<String> savedKeys = new ArrayList<>();
         try {
