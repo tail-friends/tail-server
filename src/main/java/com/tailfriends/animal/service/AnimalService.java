@@ -12,6 +12,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.health.dto.AlertResponse;
 import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.species.domain.Species;
 import com.tailfriends.species.repository.SpeciesRepository;
@@ -35,6 +36,7 @@ public class AnimalService {
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final HealthAlertService healthAlertService;
+    private final AnimalStatusService animalStatusService;
     private final Clock clock;
 
     @Transactional
@@ -105,7 +107,10 @@ public class AnimalService {
     }
 
     private AnimalResponse toResponse(Animal animal) {
-        return AnimalResponse.of(animal, feedService.scheduleOf(animal), healthAlertService.openAlertsOf(animal));
+        FeedSchedule feed = feedService.scheduleOf(animal);
+        List<AlertResponse> alerts = healthAlertService.openAlertsOf(animal);
+        return AnimalResponse.of(animal, feed, alerts,
+                animalStatusService.statusOf(animal, feed, !alerts.isEmpty()));
     }
 
     /**
