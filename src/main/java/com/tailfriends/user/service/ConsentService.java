@@ -30,6 +30,13 @@ public class ConsentService {
     }
 
     /**
+     * 항목에 지금 동의한 상태인지. 답한 적 없으면 false.
+     */
+    public boolean isAgreed(Long userId, ConsentType type) {
+        return Boolean.TRUE.equals(currentOf(userId).get(type));
+    }
+
+    /**
      * 필수 항목은 true만 받는다. 현재 상태와 다른 항목만 새 행으로 남겨 이력을 쌓는다.
      */
     @Transactional
