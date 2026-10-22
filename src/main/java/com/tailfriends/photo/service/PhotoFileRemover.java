@@ -1,6 +1,6 @@
 package com.tailfriends.photo.service;
 
-import com.tailfriends.photo.domain.Photo;
+import com.tailfriends.photo.repository.PhotoFileKeys;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
 import java.util.List;
@@ -24,15 +24,15 @@ public class PhotoFileRemover {
     private final PhotoStorage photoStorage;
 
     public void removeFilesOfUserAfterCommit(Long userId) {
-        removeAfterCommit(photoRepository.findAllByUserId(userId));
+        removeAfterCommit(photoRepository.findFileKeysByUserId(userId));
     }
 
     public void removeFilesOfAnimalAfterCommit(Long animalId) {
-        removeAfterCommit(photoRepository.findAllByAnimalId(animalId));
+        removeAfterCommit(photoRepository.findFileKeysByAnimalId(animalId));
     }
 
-    private void removeAfterCommit(List<Photo> photos) {
-        List<String> keys = photos.stream().flatMap(photo -> photo.fileKeys().stream()).toList();
+    private void removeAfterCommit(List<PhotoFileKeys> photos) {
+        List<String> keys = photos.stream().flatMap(photo -> photo.all().stream()).toList();
         if (keys.isEmpty()) {
             return;
         }
