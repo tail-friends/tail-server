@@ -25,7 +25,7 @@ public class PhotoController {
     private final PhotoService photoService;
 
     @Operation(summary = "사진 업로드",
-            description = "JPG·PNG, 최대 20MB. 128px 썸네일을 만들고 keepOriginal이면 긴 변 1600px 원본을 보관한다. 분석은 따로 호출한다.")
+            description = "JPG·PNG, 최대 20MB. 128px 썸네일을 만들고 keepOriginal이면서 원본 사진 보관에 동의했으면 긴 변 1600px 원본을 보관한다. 동의하지 않았으면 originalKept=false. 분석은 따로 호출한다.")
     @PostMapping(value = "/api/v1/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoUploadResponse> upload(
