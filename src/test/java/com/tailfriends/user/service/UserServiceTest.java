@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -24,17 +25,21 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private PhotoFileRemover photoFileRemover;
+
     @InjectMocks
     private UserService userService;
 
     @Test
-    void 탈퇴하면_사용자를_지운다() {
+    void 탈퇴하면_사용자와_사진_파일을_지운다() {
         User user = User.builder().provider(Provider.KAKAO).providerId("1").nickname("망고집사").build();
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
         userService.withdraw(1L);
 
         verify(userRepository).delete(user);
+        verify(photoFileRemover).removeFilesOfUserAfterCommit(1L);
     }
 
     @Test
@@ -45,5 +50,6 @@ class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
         verify(userRepository, never()).delete(any());
+        verify(photoFileRemover, never()).removeFilesOfUserAfterCommit(any());
     }
 }
