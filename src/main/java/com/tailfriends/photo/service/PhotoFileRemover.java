@@ -24,15 +24,17 @@ public class PhotoFileRemover {
     private final PhotoStorage photoStorage;
 
     public void removeFilesOfUserAfterCommit(Long userId) {
-        removeAfterCommit(photoRepository.findFileKeysByUserId(userId));
+        removeAfterCommit(keysOf(photoRepository.findFileKeysByUserId(userId)));
     }
 
     public void removeFilesOfAnimalAfterCommit(Long animalId) {
-        removeAfterCommit(photoRepository.findFileKeysByAnimalId(animalId));
+        removeAfterCommit(keysOf(photoRepository.findFileKeysByAnimalId(animalId)));
     }
 
-    private void removeAfterCommit(List<PhotoFileKeys> photos) {
-        List<String> keys = photos.stream().flatMap(photo -> photo.all().stream()).toList();
+    /**
+     * 이 파일들을 호출한 트랜잭션이 커밋된 뒤에 지운다.
+     */
+    public void removeAfterCommit(List<String> keys) {
         if (keys.isEmpty()) {
             return;
         }
@@ -42,6 +44,10 @@ public class PhotoFileRemover {
                 keys.forEach(PhotoFileRemover.this::deleteQuietly);
             }
         });
+    }
+
+    private static List<String> keysOf(List<PhotoFileKeys> photos) {
+        return photos.stream().flatMap(photo -> photo.all().stream()).toList();
     }
 
     private void deleteQuietly(String key) {
