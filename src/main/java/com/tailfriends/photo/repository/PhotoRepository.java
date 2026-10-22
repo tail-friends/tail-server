@@ -23,4 +23,6 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
             from Photo p where p.animal.id = :animalId
             """)
     List<PhotoFileKeys> findFileKeysByAnimalId(@Param("animalId") Long animalId);
+
+    List<Photo> findAllByUserIdAndOriginalKeyNotNull(Long userId);
 }
