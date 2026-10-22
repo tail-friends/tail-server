@@ -18,6 +18,9 @@ import com.tailfriends.health.repository.OpenAlertCount;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.user.domain.AlertRules;
+import com.tailfriends.user.service.UserSettingsService;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.EnumSet;
 import java.util.List;
@@ -39,18 +42,20 @@ public class HealthAlertService {
     private final HealthAlertRepository alertRepository;
     private final LogRepository logRepository;
     private final AnimalRepository animalRepository;
+    private final UserSettingsService userSettingsService;
     private final Clock clock;
 
     /**
      * 기록을 저장·수정한 뒤 그 종류에 해당하는 규칙만 다시 판정한다. 새로 만든 경고를 돌려준다.
      * 같은 종류의 열린 경고가 이미 있으면 새로 만들지 않는다. 조건이 풀려도 경고를 자동으로 닫지 않는다.
+     * 기준은 개체 주인의 경고 기준 설정이다.
      */
     @Transactional
     public List<AlertResponse> evaluate(Animal animal, LogType logType) {
         Optional<HealthAlert> alert = switch (logType) {
-            case FEED -> judgeRefusal(animal);
-            case WEIGHT -> judgeWeightLoss(animal);
-            case CLEAN -> judgeLooseStool(animal);
+            case FEED -> judgeRefusal(animal, rulesOf(animal));
+            case WEIGHT -> judgeWeightLoss(animal, rulesOf(animal));
+            case CLEAN -> judgeLooseStool(animal, rulesOf(animal));
             default -> Optional.empty();
         };
         return alert
@@ -113,49 +118,54 @@ public class HealthAlertService {
                 .collect(Collectors.toMap(OpenAlertCount::animalId, OpenAlertCount::count));
     }
 
+    private AlertRules rulesOf(Animal animal) {
+        return userSettingsService.alertRulesOf(animal.getUser().getId());
+    }
+
     /**
      * 쿨링 기간에는 거식 경고를 만들지 않는다.
      */
-    private Optional<HealthAlert> judgeRefusal(Animal animal) {
+    private Optional<HealthAlert> judgeRefusal(Animal animal, AlertRules rules) {
         if (FeedSchedule.isCooling(animal.getCoolingStart(), animal.getCoolingEnd(), KstDate.today(clock))) {
             return Optional.empty();
         }
         List<Boolean> latestRefused = logRepository.findLatestRefused(
-                animal.getId(), PageRequest.of(0, HealthRules.REFUSAL_COUNT));
-        if (!HealthRules.isRefusalStreak(latestRefused)) {
+                animal.getId(), PageRequest.of(0, rules.refusalCount()));
+        if (!HealthRules.isRefusalStreak(rules, latestRefused)) {
             return Optional.empty();
         }
-        return Optional.of(HealthAlert.open(animal, AlertType.REFUSAL_ALERT, HealthRules.refusalMessage()));
+        return Optional.of(HealthAlert.open(animal, AlertType.REFUSAL_ALERT, HealthRules.refusalMessage(rules)));
     }
 
     /**
-     * 가장 최근 체중을, 그 기록일로부터 WEIGHT_LOSS_DAYS일 안의 최고 체중과 비교한다.
+     * 가장 최근 체중을, 그 기록일로부터 weightLossDays일 안의 최고 체중과 비교한다.
      */
-    private Optional<HealthAlert> judgeWeightLoss(Animal animal) {
+    private Optional<HealthAlert> judgeWeightLoss(Animal animal, AlertRules rules) {
         Optional<Log> latest = logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(
                 animal.getId(), LogType.WEIGHT);
         if (latest.isEmpty()) {
             return Optional.empty();
         }
         Log latestWeight = latest.get();
-        OptionalInt percent = HealthRules.weightLossPercent(latestWeight.getWeightG(), logRepository.findHighestWeight(
+        BigDecimal highest = logRepository.findHighestWeight(
                         animal.getId(),
-                        latestWeight.getLogDate().minusDays(HealthRules.WEIGHT_LOSS_DAYS),
+                        latestWeight.getLogDate().minusDays(rules.weightLossDays()),
                         latestWeight.getLogDate())
-                .orElse(null));
+                .orElse(null);
+        OptionalInt percent = HealthRules.weightLossPercent(rules, latestWeight.getWeightG(), highest);
         if (percent.isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(HealthAlert.open(animal, AlertType.WEIGHT_LOSS_ALERT,
-                HealthRules.weightLossMessage(percent.getAsInt())));
+                HealthRules.weightLossMessage(rules, percent.getAsInt())));
     }
 
-    private Optional<HealthAlert> judgeLooseStool(Animal animal) {
-        boolean streak = HealthRules.isLooseStoolStreak(logRepository.findLatestStools(
-                animal.getId(), PageRequest.of(0, HealthRules.LOOSE_STOOL_COUNT)));
+    private Optional<HealthAlert> judgeLooseStool(Animal animal, AlertRules rules) {
+        boolean streak = HealthRules.isLooseStoolStreak(rules, logRepository.findLatestStools(
+                animal.getId(), PageRequest.of(0, rules.looseStoolCount())));
         if (!streak) {
             return Optional.empty();
         }
-        return Optional.of(HealthAlert.open(animal, AlertType.STOOL_ALERT, HealthRules.looseStoolMessage()));
+        return Optional.of(HealthAlert.open(animal, AlertType.STOOL_ALERT, HealthRules.looseStoolMessage(rules)));
     }
 }
