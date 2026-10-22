@@ -28,11 +28,15 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tailfriends}
       DEV_LOGIN_ENABLED: "true"
+      STORAGE_LOCAL_PATH: /app/storage
     ports:
       - "8080:8080"
+    volumes:
+      - photo-data:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres-data:
+  photo-data:
