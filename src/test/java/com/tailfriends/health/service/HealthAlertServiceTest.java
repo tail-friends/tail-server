@@ -24,8 +24,10 @@ import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.domain.Stool;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
+import com.tailfriends.user.service.UserSettingsService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -33,20 +35,29 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class HealthAlertServiceTest {
 
     // UTC 2026-10-19 15:30 = KST 2026-10-20 00:30
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-19T15:30:00Z"), ZoneOffset.UTC);
+    private static final Long USER_ID = 1L;
     private static final Long ANIMAL_ID = 12L;
 
     private final HealthAlertRepository alertRepository = mock(HealthAlertRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
+    private final UserSettingsService userSettingsService = mock(UserSettingsService.class);
     private final HealthAlertService service =
-            new HealthAlertService(alertRepository, logRepository, animalRepository, CLOCK);
+            new HealthAlertService(alertRepository, logRepository, animalRepository, userSettingsService, CLOCK);
+
+    @BeforeEach
+    void setUp() {
+        given(userSettingsService.alertRulesOf(USER_ID)).willReturn(AlertRules.DEFAULT);
+    }
 
     @Test
     void 안_먹음이_3번_연속이면_거식_경고를_만든다() {
@@ -57,6 +68,17 @@ class HealthAlertServiceTest {
 
         assertThat(alerts).extracting(AlertResponse::type).containsExactly(AlertType.REFUSAL_ALERT);
         assertThat(alerts.getFirst().message()).isEqualTo("최근 3번 연속으로 먹지 않았어요");
+    }
+
+    @Test
+    void 개체_주인이_바꾼_경고_기준으로_판정한다() {
+        given(userSettingsService.alertRulesOf(USER_ID)).willReturn(new AlertRules(2, 10, 30, 2));
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), eq(PageRequest.of(0, 2)))).willReturn(List.of(true, true));
+        given(alertRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 77L));
+
+        List<AlertResponse> alerts = service.evaluate(animal(), LogType.FEED);
+
+        assertThat(alerts).extracting(AlertResponse::message).containsExactly("최근 2번 연속으로 먹지 않았어요");
     }
 
     @Test
@@ -145,7 +167,7 @@ class HealthAlertServiceTest {
 
     private static Animal animal() {
         return withId(Animal.builder()
-                .user(User.builder().provider(Provider.KAKAO).providerId("kakao-1").nickname("사용자").build())
+                .user(withId(User.builder().provider(Provider.KAKAO).providerId("kakao-1").nickname("사용자").build(), USER_ID))
                 .speciesName("레오파드 게코")
                 .name("망고")
                 .feedIntervalDays(4)
