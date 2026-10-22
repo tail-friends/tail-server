@@ -29,7 +29,7 @@ import java.util.List;
  */
 enum SampleAnimal {
 
-    MANGO("망고", "레오파드 게코", "탠저린", Sex.FEMALE, 4,
+    MANGO("망고", "레오파드 게코", "탠저린", Sex.FEMALE, 16, 4,
             new CharacterLook(null, Shape.GECKO, PatternType.SPOTS,
                     "#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B",
                     new BigDecimal("0.60"), new BigDecimal("0.80"), new BigDecimal("0.40"))) {
@@ -52,7 +52,7 @@ enum SampleAnimal {
         }
     },
 
-    KONGI("콩이", "크레스티드 게코", "할리퀸", Sex.MALE, 3,
+    KONGI("콩이", "크레스티드 게코", "할리퀸", Sex.MALE, 9, 3,
             new CharacterLook(null, Shape.GECKO, PatternType.STRIPES,
                     "#B5793F", "#F0D9A8", "#E8C99A", "#3B2F2F",
                     new BigDecimal("0.70"), new BigDecimal("0.50"), new BigDecimal("0.60"))) {
@@ -75,7 +75,7 @@ enum SampleAnimal {
         }
     },
 
-    DANBI("단비", "볼 파이톤", "노멀", Sex.UNKNOWN, 10,
+    DANBI("단비", "볼 파이톤", "노멀", Sex.UNKNOWN, 30, 10,
             new CharacterLook(null, Shape.SNAKE, PatternType.BANDS,
                     "#6B4A2B", "#C9A66B", "#EFE3C8", "#1E1E1E",
                     new BigDecimal("0.50"), new BigDecimal("0.30"), new BigDecimal("0.70"))) {
@@ -104,14 +104,17 @@ enum SampleAnimal {
     private final String speciesName;
     private final String morph;
     private final Sex sex;
+    private final int ageMonths;
     private final int feedIntervalDays;
     private final CharacterLook look;
 
-    SampleAnimal(String name, String speciesName, String morph, Sex sex, int feedIntervalDays, CharacterLook look) {
+    SampleAnimal(String name, String speciesName, String morph, Sex sex, int ageMonths, int feedIntervalDays,
+                 CharacterLook look) {
         this.name = name;
         this.speciesName = speciesName;
         this.morph = morph;
         this.sex = sex;
+        this.ageMonths = ageMonths;
         this.feedIntervalDays = feedIntervalDays;
         this.look = look;
     }
@@ -135,6 +138,13 @@ enum SampleAnimal {
 
     Sex getSex() {
         return sex;
+    }
+
+    /**
+     * 해칭일은 오늘부터 ageMonths개월 전이다.
+     */
+    LocalDate getHatchDate(LocalDate today) {
+        return today.minusMonths(ageMonths);
     }
 
     int getFeedIntervalDays() {
