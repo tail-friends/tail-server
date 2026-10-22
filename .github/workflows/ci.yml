@@ -78,11 +78,14 @@ jobs:
           docker compose --profile app logs app
           exit 1
 
-      - name: Call API with test login
+      - name: Call API with test login and sample data
         run: |
           token=$(curl -fsS -X POST http://localhost:8080/api/v1/dev/login \
             -H 'Content-Type: application/json' -d '{"name":"ci"}' | jq -r '.data.accessToken')
           curl -fsS http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token"
+          curl -fsS -X POST http://localhost:8080/api/v1/dev/sample-data -H "Authorization: Bearer $token"
+          count=$(curl -fsS http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token" | jq '.data.animals | length')
+          test "$count" -eq 3
 
       # 컨테이너 안의 서버 사용자가 사진 볼륨에 쓸 수 있는지 확인한다
       - name: Upload a photo
