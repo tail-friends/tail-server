@@ -58,6 +58,21 @@ class HealthAlertIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 설정에서_바꾼_경고_기준으로_판정한다() throws Exception {
+        String token = tokenOfNewUser();
+        Integer animalId = createAnimal(token);
+        mockMvc.perform(patch("/api/v1/users/me/settings").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"alertRules\": { \"refusalCount\": 2 } }"))
+                .andExpect(status().isOk());
+
+        refuse(token, animalId, TODAY.minusDays(4)).andExpect(jsonPath("$.data.newAlerts", hasSize(0)));
+        refuse(token, animalId, TODAY)
+                .andExpect(jsonPath("$.data.newAlerts", hasSize(1)))
+                .andExpect(jsonPath("$.data.newAlerts[0].message").value("최근 2번 연속으로 먹지 않았어요"));
+    }
+
+    @Test
     void 확인_처리한_경고는_열린_경고에서_빠진다() throws Exception {
         String token = tokenOfNewUser();
         Integer animalId = createAnimal(token);
