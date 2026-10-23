@@ -103,7 +103,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 캐릭터_분석_결과를_명세_형식으로_돌려준다() throws Exception {
-        given(characterAnalysisService.analyze(1L, 301L)).willReturn(new CharacterAnalysisResponse("gecko", "spots",
+        given(characterAnalysisService.analyze(301L)).willReturn(new CharacterAnalysisResponse("gecko", "spots",
                 new CharacterAnalysis.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"),
                 new CharacterAnalysis.Extra(new BigDecimal("0.60"), new BigDecimal("0.80"), null),
                 "탠저린 레오파드 게코"));
@@ -122,7 +122,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 하루_횟수를_넘으면_429() throws Exception {
-        given(characterAnalysisService.analyze(1L, 301L)).willThrow(new BusinessException(ErrorCode.AI_LIMIT_EXCEEDED));
+        given(characterAnalysisService.analyze(301L)).willThrow(new BusinessException(ErrorCode.AI_LIMIT_EXCEEDED));
 
         mockMvc.perform(post("/api/v1/photos/301/character-analysis"))
                 .andExpect(status().isTooManyRequests())
@@ -132,7 +132,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 파충류가_없으면_422() throws Exception {
-        given(characterAnalysisService.analyze(1L, 301L)).willThrow(new BusinessException(ErrorCode.NO_REPTILE_IN_PHOTO));
+        given(characterAnalysisService.analyze(301L)).willThrow(new BusinessException(ErrorCode.NO_REPTILE_IN_PHOTO));
 
         mockMvc.perform(post("/api/v1/photos/301/character-analysis"))
                 .andExpect(status().isUnprocessableEntity())
@@ -142,7 +142,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void AI를_쓸_수_없으면_503() throws Exception {
-        given(characterAnalysisService.analyze(1L, 301L)).willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE));
+        given(characterAnalysisService.analyze(301L)).willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE));
 
         mockMvc.perform(post("/api/v1/photos/301/character-analysis"))
                 .andExpect(status().isServiceUnavailable())

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.photo.ai.AiProperties;
 import com.tailfriends.photo.ai.CharacterAnalysis;
 import com.tailfriends.photo.ai.CharacterAnalyzer;
@@ -65,7 +66,7 @@ class CharacterAnalysisServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CharacterAnalysisService(photoRepository, aiUsageRepository, userRepository, photoStorage,
+        service = new CharacterAnalysisService(CurrentUserStub.of(1L), photoRepository, aiUsageRepository, userRepository, photoStorage,
                 characterAnalyzer, new AiProperties("gemini-test", 5, "key"), CLOCK);
     }
 
@@ -77,7 +78,7 @@ class CharacterAnalysisServiceTest {
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willReturn(GECKO);
 
-        CharacterAnalysisResponse response = service.analyze(1L, 301L);
+        CharacterAnalysisResponse response = service.analyze(301L);
 
         assertThat(response.shape()).isEqualTo("gecko");
         assertThat(response.guess()).isEqualTo("탠저린 레오파드 게코");
@@ -91,7 +92,7 @@ class CharacterAnalysisServiceTest {
         given(photoStorage.read("p_original.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willReturn(GECKO);
 
-        service.analyze(1L, 301L);
+        service.analyze(301L);
 
         verify(photoStorage).read("p_original.jpg");
     }
@@ -102,7 +103,7 @@ class CharacterAnalysisServiceTest {
         given(aiUsageRepository.countByUserIdAndSuccessTrueAndCreatedAtGreaterThanEqual(1L, START_OF_TODAY))
                 .willReturn(5L);
 
-        assertError(() -> service.analyze(1L, 301L), ErrorCode.AI_LIMIT_EXCEEDED);
+        assertError(() -> service.analyze(301L), ErrorCode.AI_LIMIT_EXCEEDED);
         verify(characterAnalyzer, never()).analyze(any());
     }
 
@@ -112,7 +113,7 @@ class CharacterAnalysisServiceTest {
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willReturn(CharacterAnalysis.notReptile());
 
-        assertError(() -> service.analyze(1L, 301L), ErrorCode.NO_REPTILE_IN_PHOTO);
+        assertError(() -> service.analyze(301L), ErrorCode.NO_REPTILE_IN_PHOTO);
         verify(aiUsageRepository).save(argThat(AiUsage::isSuccess));
     }
 
@@ -122,7 +123,7 @@ class CharacterAnalysisServiceTest {
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE));
 
-        assertError(() -> service.analyze(1L, 301L), ErrorCode.AI_UNAVAILABLE);
+        assertError(() -> service.analyze(301L), ErrorCode.AI_UNAVAILABLE);
         verify(aiUsageRepository).save(argThat(usage -> !usage.isSuccess()));
     }
 
@@ -130,7 +131,7 @@ class CharacterAnalysisServiceTest {
     void 분석할_사진이_없으면_INVALID_INPUT() {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, null)));
 
-        assertError(() -> service.analyze(1L, 301L), ErrorCode.INVALID_INPUT);
+        assertError(() -> service.analyze(301L), ErrorCode.INVALID_INPUT);
         verify(characterAnalyzer, never()).analyze(any());
     }
 
@@ -138,7 +139,7 @@ class CharacterAnalysisServiceTest {
     void 남의_사진이면_PHOTO_NOT_FOUND() {
         given(photoRepository.findByIdAndUserId(eq(301L), eq(1L))).willReturn(Optional.empty());
 
-        assertError(() -> service.analyze(1L, 301L), ErrorCode.PHOTO_NOT_FOUND);
+        assertError(() -> service.analyze(301L), ErrorCode.PHOTO_NOT_FOUND);
     }
 
     private static Photo photo(String originalKey, String analysisKey) {

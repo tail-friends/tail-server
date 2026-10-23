@@ -2,6 +2,7 @@ package com.tailfriends.photo.service;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.photo.ai.AiProperties;
 import com.tailfriends.photo.ai.CharacterAnalysis;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CharacterAnalysisService {
 
+    private final CurrentUser currentUser;
     private final PhotoRepository photoRepository;
     private final AiUsageRepository aiUsageRepository;
     private final UserRepository userRepository;
@@ -38,7 +40,8 @@ public class CharacterAnalysisService {
      * AI 호출이 몇 초 걸려 그동안 DB 연결을 잡고 있지 않도록 트랜잭션 없이 실행한다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public CharacterAnalysisResponse analyze(Long userId, Long photoId) {
+    public CharacterAnalysisResponse analyze(Long photoId) {
+        Long userId = currentUser.id();
         Photo photo = photoRepository.findByIdAndUserId(photoId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PHOTO_NOT_FOUND));
         String sourceKey = photo.analysisSourceKey();
