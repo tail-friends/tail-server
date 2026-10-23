@@ -5,6 +5,7 @@ import com.tailfriends.animal.domain.FeedSchedule;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.health.domain.AlertStatus;
 import com.tailfriends.health.domain.AlertType;
@@ -36,9 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class HealthAlertService {
 
+    private final CurrentUser currentUser;
     private final HealthAlertRepository alertRepository;
     private final LogRepository logRepository;
     private final AnimalRepository animalRepository;
@@ -70,7 +71,9 @@ public class HealthAlertService {
     /**
      * 최신순. animalId가 없으면 내 전체 개체, status가 없으면 모든 상태. cursor는 이전 페이지의 마지막 경고 ID다.
      */
-    public AlertListResponse getAlerts(Long userId, Long animalId, AlertStatus status, Long cursor, int size) {
+    @Transactional(readOnly = true)
+    public AlertListResponse getAlerts(Long animalId, AlertStatus status, Long cursor, int size) {
+        Long userId = currentUser.id();
         Set<AlertStatus> statuses = status == null ? EnumSet.allOf(AlertStatus.class) : EnumSet.of(status);
         long before = cursor == null ? Long.MAX_VALUE : cursor;
         PageRequest limit = PageRequest.of(0, size + 1);
@@ -91,7 +94,8 @@ public class HealthAlertService {
     }
 
     @Transactional
-    public AlertResponse update(Long userId, Long alertId, AlertUpdateRequest request) {
+    public AlertResponse update(Long alertId, AlertUpdateRequest request) {
+        Long userId = currentUser.id();
         HealthAlert alert = alertRepository.findByIdAndUserId(alertId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ALERT_NOT_FOUND));
         if (request.status() != AlertStatus.ACKNOWLEDGED) {
@@ -101,6 +105,7 @@ public class HealthAlertService {
         return AlertResponse.from(alert);
     }
 
+    @Transactional(readOnly = true)
     public List<AlertResponse> openAlertsOf(Animal animal) {
         return alertRepository.findAllByAnimalIdAndStatusOrderByIdDesc(animal.getId(), AlertStatus.OPEN).stream()
                 .map(AlertResponse::from)
@@ -110,6 +115,7 @@ public class HealthAlertService {
     /**
      * 개체 ID별 열린 경고 수. 쿼리 한 번으로 조회한다.
      */
+    @Transactional(readOnly = true)
     public Map<Long, Long> openCountsOf(List<Animal> animals) {
         if (animals.isEmpty()) {
             return Map.of();

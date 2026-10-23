@@ -42,7 +42,7 @@ class HealthAlertControllerTest {
     @Test
     @WithMockUserId(7L)
     void 경고_목록을_명세_형식으로_돌려준다() throws Exception {
-        given(healthAlertService.getAlerts(7L, null, AlertStatus.OPEN, null, 20))
+        given(healthAlertService.getAlerts(null, AlertStatus.OPEN, null, 20))
                 .willReturn(new AlertListResponse(List.of(ALERT), null));
 
         mockMvc.perform(get("/api/v1/health/alerts").param("status", "OPEN"))
@@ -66,7 +66,7 @@ class HealthAlertControllerTest {
     @Test
     @WithMockUserId(7L)
     void 경고를_확인_처리한다() throws Exception {
-        given(healthAlertService.update(eq(7L), eq(77L), any())).willReturn(new AlertResponse(77L, 12L,
+        given(healthAlertService.update(eq(77L), any())).willReturn(new AlertResponse(77L, 12L,
                 AlertType.WEIGHT_LOSS_ALERT, ALERT.message(), AlertStatus.ACKNOWLEDGED, ALERT.createdAt()));
 
         mockMvc.perform(patch("/api/v1/health/alerts/77").contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +78,7 @@ class HealthAlertControllerTest {
     @Test
     @WithMockUserId
     void 없는_경고면_ALERT_NOT_FOUND() throws Exception {
-        given(healthAlertService.update(any(), eq(999L), any())).willThrow(new BusinessException(ErrorCode.ALERT_NOT_FOUND));
+        given(healthAlertService.update(eq(999L), any())).willThrow(new BusinessException(ErrorCode.ALERT_NOT_FOUND));
 
         mockMvc.perform(patch("/api/v1/health/alerts/999").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"status\": \"ACKNOWLEDGED\" }"))

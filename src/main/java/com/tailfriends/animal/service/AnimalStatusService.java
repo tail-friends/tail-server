@@ -21,13 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AnimalStatusService {
 
     private final LogRepository logRepository;
     private final AnimalCharacterRepository animalCharacterRepository;
     private final Clock clock;
 
+    @Transactional(readOnly = true)
     public AnimalStatus statusOf(Animal animal, FeedSchedule feed, boolean hasOpenAlert) {
         ShedSummary shed = ShedSummary.from(
                 logRepository.findLatestSheds(animal.getId(), PageRequest.of(0, ShedSummary.RECENT_LOGS)));

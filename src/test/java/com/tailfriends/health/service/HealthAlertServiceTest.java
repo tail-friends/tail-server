@@ -13,6 +13,7 @@ import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.health.domain.AlertStatus;
 import com.tailfriends.health.domain.AlertType;
 import com.tailfriends.health.domain.HealthAlert;
@@ -52,7 +53,7 @@ class HealthAlertServiceTest {
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final UserSettingsService userSettingsService = mock(UserSettingsService.class);
     private final HealthAlertService service =
-            new HealthAlertService(alertRepository, logRepository, animalRepository, userSettingsService, CLOCK);
+            new HealthAlertService(CurrentUserStub.of(USER_ID), alertRepository, logRepository, animalRepository, userSettingsService, CLOCK);
 
     @BeforeEach
     void setUp() {
@@ -135,12 +136,12 @@ class HealthAlertServiceTest {
         HealthAlert alert = withId(HealthAlert.open(animal(), AlertType.STOOL_ALERT, "메시지"), 79L);
         given(alertRepository.findByIdAndUserId(79L, 1L)).willReturn(Optional.of(alert));
 
-        assertThatThrownBy(() -> service.update(1L, 79L, new AlertUpdateRequest(AlertStatus.OPEN)))
+        assertThatThrownBy(() -> service.update(79L, new AlertUpdateRequest(AlertStatus.OPEN)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
 
-        assertThat(service.update(1L, 79L, new AlertUpdateRequest(AlertStatus.ACKNOWLEDGED)).status())
+        assertThat(service.update(79L, new AlertUpdateRequest(AlertStatus.ACKNOWLEDGED)).status())
                 .isEqualTo(AlertStatus.ACKNOWLEDGED);
     }
 
@@ -148,7 +149,7 @@ class HealthAlertServiceTest {
     void 없거나_남의_경고는_ALERT_NOT_FOUND() {
         given(alertRepository.findByIdAndUserId(79L, 1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(1L, 79L, new AlertUpdateRequest(AlertStatus.ACKNOWLEDGED)))
+        assertThatThrownBy(() -> service.update(79L, new AlertUpdateRequest(AlertStatus.ACKNOWLEDGED)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ALERT_NOT_FOUND);

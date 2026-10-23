@@ -43,6 +43,7 @@ public class UserSettingsService {
     /**
      * 건강 경고 판정 기준. 설정을 바꾼 적이 없으면 기본값.
      */
+    @Transactional(readOnly = true)
     public AlertRules alertRulesOf(Long userId) {
         return userSettingsRepository.findById(userId)
                 .map(UserSettings::alertRules)

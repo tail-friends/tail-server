@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,19 +30,17 @@ public class HealthAlertController {
 
     @Operation(summary = "건강 경고 목록", description = "최신순. animalId가 없으면 내 전체 개체. cursor는 이전 응답의 nextCursor.")
     @GetMapping
-    public ApiResponse<AlertListResponse> getAlerts(@AuthenticationPrincipal Long userId,
-                                                    @RequestParam(required = false) Long animalId,
+    public ApiResponse<AlertListResponse> getAlerts(@RequestParam(required = false) Long animalId,
                                                     @RequestParam(required = false) AlertStatus status,
                                                     @RequestParam(required = false) Long cursor,
                                                     @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.success(healthAlertService.getAlerts(userId, animalId, status, cursor, size));
+        return ApiResponse.success(healthAlertService.getAlerts(animalId, status, cursor, size));
     }
 
     @Operation(summary = "건강 경고 확인 처리", description = "status는 ACKNOWLEDGED만 된다.")
     @PatchMapping("/{alertId}")
-    public ApiResponse<AlertResponse> update(@AuthenticationPrincipal Long userId,
-                                             @PathVariable Long alertId,
+    public ApiResponse<AlertResponse> update(@PathVariable Long alertId,
                                              @Valid @RequestBody AlertUpdateRequest request) {
-        return ApiResponse.success(healthAlertService.update(userId, alertId, request));
+        return ApiResponse.success(healthAlertService.update(alertId, request));
     }
 }
