@@ -1,0 +1,88 @@
+name: Discord 알림
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-opened:
+    name: Notify
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.action != 'closed'
+      && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Find requested reviewers
+        id: reviewers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # gh pr create는 PR을 만든 뒤 리뷰어를 따로 요청하므로 잠시 기다렸다가 조회한다
+          sleep 10
+          logins=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER/requested_reviewers" --jq '[.users[].login] | join(" ")')
+          echo "logins=$logins" >> "$GITHUB_OUTPUT"
+
+      - name: Send PR to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_MAP: ${{ vars.DISCORD_USER_MAP }}
+          DISCORD_BACKEND_MENTIONS: ${{ vars.DISCORD_BACKEND_MENTIONS }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_REVIEWERS: ${{ steps.reviewers.outputs.logins }}
+        run: .github/scripts/discord-notify.sh pr-opened
+
+  merged:
+    name: Notify merged
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Send merged PR to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+        run: .github/scripts/discord-notify.sh pr-merged
+
+  review:
+    name: Notify review
+    if: github.event_name == 'pull_request_review'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Send review result to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_MAP: ${{ vars.DISCORD_USER_MAP }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_AUTHOR: ${{ github.event.review.user.login }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+          REVIEW_URL: ${{ github.event.review.html_url }}
+        run: .github/scripts/discord-notify.sh review
