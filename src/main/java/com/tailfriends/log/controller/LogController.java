@@ -15,7 +15,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,33 +39,30 @@ public class LogController {
                     + "같은 clientId로 이미 저장했으면 409 DUPLICATE_CLIENT_ID와 data.id(기존 기록)를 돌려준다.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<LogCreateResponse> create(@AuthenticationPrincipal Long userId,
-                                                 @Valid @RequestBody LogCreateRequest request) {
-        return ApiResponse.success(logService.create(userId, request));
+    public ApiResponse<LogCreateResponse> create(@Valid @RequestBody LogCreateRequest request) {
+        return ApiResponse.success(logService.create(request));
     }
 
     @Operation(summary = "기록 목록", description = "기록일 최신순. cursor는 이전 응답의 nextCursor.")
     @GetMapping
-    public ApiResponse<LogListResponse> getLogs(@AuthenticationPrincipal Long userId,
-                                                @RequestParam Long animalId,
+    public ApiResponse<LogListResponse> getLogs(@RequestParam Long animalId,
                                                 @RequestParam(required = false) LogType type,
                                                 @RequestParam(required = false) Long cursor,
                                                 @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ApiResponse.success(logService.getLogs(userId, animalId, type, cursor, size));
+        return ApiResponse.success(logService.getLogs(animalId, type, cursor, size));
     }
 
     @Operation(summary = "기록 수정", description = "보낸 필드만 바꾼다. type은 바꿀 수 없다.")
     @PatchMapping("/{logId}")
-    public ApiResponse<LogResponse> update(@AuthenticationPrincipal Long userId,
-                                           @PathVariable Long logId,
+    public ApiResponse<LogResponse> update(@PathVariable Long logId,
                                            @Valid @RequestBody LogUpdateRequest request) {
-        return ApiResponse.success(logService.update(userId, logId, request));
+        return ApiResponse.success(logService.update(logId, request));
     }
 
     @Operation(summary = "기록 삭제", description = "본문 없이 204.")
     @DeleteMapping("/{logId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long logId) {
-        logService.delete(userId, logId);
+    public void delete(@PathVariable Long logId) {
+        logService.delete(logId);
     }
 }

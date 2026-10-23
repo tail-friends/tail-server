@@ -16,6 +16,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.animal.service.FeedService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
@@ -49,7 +50,7 @@ class LogServiceTest {
     private final LogRepository logRepository = mock(LogRepository.class);
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final LogService logService = new LogService(logRepository, animalRepository, userRepository,
+    private final LogService logService = new LogService(CurrentUserStub.of(USER_ID), logRepository, animalRepository, userRepository,
             new FeedService(logRepository, CLOCK), CLOCK);
 
     @Test
@@ -57,7 +58,7 @@ class LogServiceTest {
         given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
 
-        Long id = logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 20))).id();
+        Long id = logService.create(weightRequest(null, LocalDate.of(2026, 10, 20))).id();
 
         assertThat(id).isEqualTo(902L);
     }
@@ -68,7 +69,7 @@ class LogServiceTest {
         given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
         given(logRepository.findLastFedDate(ANIMAL_ID)).willReturn(Optional.of(LocalDate.of(2026, 10, 20)));
 
-        LogCreateResponse response = logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 20)));
+        LogCreateResponse response = logService.create(weightRequest(null, LocalDate.of(2026, 10, 20)));
 
         assertThat(response.feed().status()).isEqualTo(FeedStatus.UPCOMING);
         assertThat(response.feed().nextDate()).isEqualTo(LocalDate.of(2026, 10, 24));
@@ -76,7 +77,7 @@ class LogServiceTest {
 
     @Test
     void 기록일이_한국_날짜로_내일이면_INVALID_INPUT() {
-        assertThatThrownBy(() -> logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 21))))
+        assertThatThrownBy(() -> logService.create(weightRequest(null, LocalDate.of(2026, 10, 21))))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -87,7 +88,7 @@ class LogServiceTest {
     void 남의_개체에는_기록할_수_없다() {
         given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> logService.create(USER_ID, weightRequest(null, LocalDate.of(2026, 10, 18))))
+        assertThatThrownBy(() -> logService.create(weightRequest(null, LocalDate.of(2026, 10, 18))))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
@@ -100,7 +101,7 @@ class LogServiceTest {
         given(logRepository.findByUserIdAndClientId(USER_ID, clientId))
                 .willReturn(Optional.of(withId(weightLog(LocalDate.of(2026, 10, 18)), 880L)));
 
-        assertThatThrownBy(() -> logService.create(USER_ID, weightRequest(clientId, LocalDate.of(2026, 10, 18))))
+        assertThatThrownBy(() -> logService.create(weightRequest(clientId, LocalDate.of(2026, 10, 18))))
                 .isInstanceOfSatisfying(BusinessException.class, e -> {
                     assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_CLIENT_ID);
                     assertThat(e.getData()).isEqualTo(new LogIdResponse(880L));
@@ -113,7 +114,7 @@ class LogServiceTest {
         given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.findFirstPage(eq(ANIMAL_ID), any(), any())).willReturn(logsWithIds(30, 29, 28));
 
-        LogListResponse response = logService.getLogs(USER_ID, ANIMAL_ID, null, null, 2);
+        LogListResponse response = logService.getLogs(ANIMAL_ID, null, null, 2);
 
         assertThat(response.logs()).extracting("id").containsExactly(30L, 29L);
         assertThat(response.nextCursor()).isEqualTo(29L);
@@ -124,7 +125,7 @@ class LogServiceTest {
         given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.findFirstPage(eq(ANIMAL_ID), any(), any())).willReturn(logsWithIds(30, 29));
 
-        LogListResponse response = logService.getLogs(USER_ID, ANIMAL_ID, null, null, 2);
+        LogListResponse response = logService.getLogs(ANIMAL_ID, null, null, 2);
 
         assertThat(response.logs()).hasSize(2);
         assertThat(response.nextCursor()).isNull();
@@ -138,7 +139,7 @@ class LogServiceTest {
         given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.findByIdAndUserId(50L, USER_ID)).willReturn(Optional.of(otherLog));
 
-        assertThatThrownBy(() -> logService.getLogs(USER_ID, ANIMAL_ID, null, 50L, 20))
+        assertThatThrownBy(() -> logService.getLogs(ANIMAL_ID, null, 50L, 20))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);

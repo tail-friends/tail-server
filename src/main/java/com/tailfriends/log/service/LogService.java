@@ -6,6 +6,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.animal.service.FeedService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class LogService {
 
+    private final CurrentUser currentUser;
     private final LogRepository logRepository;
     private final AnimalRepository animalRepository;
     private final UserRepository userRepository;
@@ -42,7 +44,8 @@ public class LogService {
      * 같은 사용자가 같은 clientId로 다시 보내면 저장하지 않고 409와 기존 기록 ID를 돌려준다. (오프라인 재전송)
      */
     @Transactional
-    public LogCreateResponse create(Long userId, LogCreateRequest request) {
+    public LogCreateResponse create(LogCreateRequest request) {
+        Long userId = currentUser.id();
         validateDate(request.date());
         Animal animal = findAnimal(userId, request.animalId());
         if (request.clientId() != null) {
@@ -66,7 +69,8 @@ public class LogService {
     /**
      * 기록일 최신순. cursor는 이전 페이지의 마지막 기록 ID다.
      */
-    public LogListResponse getLogs(Long userId, Long animalId, LogType type, Long cursor, int size) {
+    public LogListResponse getLogs(Long animalId, LogType type, Long cursor, int size) {
+        Long userId = currentUser.id();
         findAnimal(userId, animalId);
         Set<LogType> types = type == null ? EnumSet.allOf(LogType.class) : EnumSet.of(type);
         PageRequest limit = PageRequest.of(0, size + 1);
@@ -88,7 +92,8 @@ public class LogService {
     }
 
     @Transactional
-    public LogResponse update(Long userId, Long logId, LogUpdateRequest request) {
+    public LogResponse update(Long logId, LogUpdateRequest request) {
+        Long userId = currentUser.id();
         Log log = findLog(userId, logId);
         validateDate(request.date());
         log.update(request.date(), request.memo(), request.toDetails());
@@ -96,7 +101,8 @@ public class LogService {
     }
 
     @Transactional
-    public void delete(Long userId, Long logId) {
+    public void delete(Long logId) {
+        Long userId = currentUser.id();
         logRepository.delete(findLog(userId, logId));
     }
 
