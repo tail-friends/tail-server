@@ -9,7 +9,9 @@ import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
+import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.repository.UserRepository;
+import com.tailfriends.user.service.ConsentService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,9 +37,11 @@ public class PhotoService {
     private final UserRepository userRepository;
     private final PhotoStorage photoStorage;
     private final ImageResizer imageResizer;
+    private final ConsentService consentService;
 
     /**
-     * 128px 썸네일을 만들고, keepOriginal이면 긴 변 1600px로 줄인 원본도 보관한다. 모두 JPG로 저장한다.
+     * 128px 썸네일을 만들고, keepOriginal이면서 원본 사진 보관에 동의한 사용자면 긴 변 1600px로 줄인 원본도 보관한다.
+     * 동의하지 않았으면 원본은 보관하지 않고 originalKept=false로 알려준다. 모두 JPG로 저장한다.
      * 원본을 보관하지 않는 캐릭터 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
      */
     @Transactional
@@ -45,9 +49,10 @@ public class PhotoService {
                                       MultipartFile file) {
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
-        boolean keepAnalysisCopy = !keepOriginal && purpose == PhotoPurpose.CHARACTER;
+        boolean keep = keepOriginal && consentService.isAgreed(userId, ConsentType.KEEP_ORIGINAL);
+        boolean keepAnalysisCopy = !keep && purpose == PhotoPurpose.CHARACTER;
         byte[] bytes = read(file);
-        List<byte[]> images = keepOriginal
+        List<byte[]> images = keep
                 ? imageResizer.toJpegs(bytes, THUMBNAIL_SIZE, ORIGINAL_SIZE)
                 : keepAnalysisCopy
                         ? imageResizer.toJpegs(bytes, THUMBNAIL_SIZE, ANALYSIS_SIZE)
@@ -55,7 +60,7 @@ public class PhotoService {
 
         String name = "photos/" + UUID.randomUUID();
         String thumbnailKey = name + "_thumb.jpg";
-        String originalKey = keepOriginal ? name + "_original.jpg" : null;
+        String originalKey = keep ? name + "_original.jpg" : null;
         String analysisKey = keepAnalysisCopy ? name + "_analysis.jpg" : null;
         String secondKey = originalKey != null ? originalKey : analysisKey;
 

@@ -20,7 +20,9 @@ import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
+import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.repository.UserRepository;
+import com.tailfriends.user.service.ConsentService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -50,6 +52,9 @@ class PhotoServiceTest {
 
     @Mock
     private ImageResizer imageResizer;
+
+    @Mock
+    private ConsentService consentService;
 
     @Mock
     private Animal animal;
@@ -88,8 +93,9 @@ class PhotoServiceTest {
     }
 
     @Test
-    void 원본_보관을_원하면_1600px_원본도_저장한다() {
+    void 원본_보관을_원하고_동의했으면_1600px_원본도_저장한다() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(true);
         given(imageResizer.toJpegs(BYTES, 128, 1600)).willReturn(List.of(new byte[] {9}, new byte[] {8}));
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -101,8 +107,23 @@ class PhotoServiceTest {
     }
 
     @Test
+    void 원본_보관을_원해도_동의하지_않았으면_썸네일만_저장한다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(false);
+        given(imageResizer.toJpegs(BYTES, 128)).willReturn(List.of(new byte[] {9}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PhotoUploadResponse response = photoService.upload(1L, 12L, PhotoPurpose.ALBUM, true, FILE);
+
+        verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
+        verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
+        assertThat(response.originalKept()).isFalse();
+    }
+
+    @Test
     void DB_저장이_실패하면_저장한_파일을_지운다() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(true);
         given(imageResizer.toJpegs(BYTES, 128, 1600)).willReturn(List.of(new byte[] {9}, new byte[] {8}));
         willThrow(new IllegalStateException("DB 오류")).given(photoRepository).save(any());
 

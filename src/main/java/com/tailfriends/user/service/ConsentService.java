@@ -30,6 +30,13 @@ public class ConsentService {
     }
 
     /**
+     * 항목에 지금 동의한 상태인지. 답한 적 없으면 false.
+     */
+    public boolean isAgreed(Long userId, ConsentType type) {
+        return Boolean.TRUE.equals(currentOf(userId).get(type));
+    }
+
+    /**
      * 필수 항목은 true만 받는다. 현재 상태와 다른 항목만 새 행으로 남겨 이력을 쌓는다.
      */
     @Transactional
@@ -49,6 +56,20 @@ public class ConsentService {
             }
         });
         return ConsentResponse.from(requested);
+    }
+
+    /**
+     * 선택 항목 하나만 바꾼다. 설정 화면의 원본 사진 보관·알림 켜기/끄기용. 현재 상태와 같으면 남기지 않는다.
+     */
+    @Transactional
+    public void changeOptional(Long userId, ConsentType type, boolean agreed) {
+        if (type.isRequired()) {
+            throw new IllegalArgumentException("필수 항목은 설정에서 바꿀 수 없어요: " + type);
+        }
+        User user = findUser(userId);
+        if (!Objects.equals(currentOf(userId).get(type), agreed)) {
+            consentRepository.save(Consent.of(user, type, agreed));
+        }
     }
 
     /**

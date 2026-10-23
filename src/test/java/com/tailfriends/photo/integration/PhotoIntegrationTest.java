@@ -1,9 +1,11 @@
 package com.tailfriends.photo.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,6 +15,7 @@ import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.repository.PhotoRepository;
+import com.tailfriends.photo.storage.StorageProperties;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -21,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
@@ -44,9 +48,13 @@ class PhotoIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private StorageProperties storageProperties;
+
     @Test
-    void 사진을_올리면_썸네일과_원본이_저장되고_썸네일_주소로_로그인_없이_받을_수_있다() throws Exception {
+    void 원본_보관에_동의했으면_썸네일과_원본이_저장되고_썸네일_주소로_로그인_없이_받을_수_있다() throws Exception {
         String token = tokenOfNewUser();
+        agreeKeepOriginal(token, true);
         long animalId = createAnimal(token);
 
         String response = mockMvc.perform(multipart("/api/v1/photos").file(png(2000, 1000))
@@ -79,6 +87,54 @@ class PhotoIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 원본_보관에_동의하지_않았으면_keepOriginal을_보내도_썸네일만_저장한다() throws Exception {
+        String token = tokenOfNewUser();
+        agreeKeepOriginal(token, false);
+        long animalId = createAnimal(token);
+
+        String response = mockMvc.perform(multipart("/api/v1/photos").file(png(20, 10))
+                        .param("animalId", String.valueOf(animalId))
+                        .param("purpose", "ALBUM")
+                        .param("keepOriginal", "true")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.originalKept").value(false))
+                .andReturn().getResponse().getContentAsString();
+
+        long photoId = ((Number) JsonPath.read(response, "$.data.photoId")).longValue();
+        assertThat(photoRepository.findById(photoId).orElseThrow().getOriginalKey()).isNull();
+    }
+
+    @Test
+    void 보관한_원본을_모두_지우면_썸네일만_남고_원본_보관_동의가_철회된다() throws Exception {
+        String token = tokenOfNewUser();
+        agreeKeepOriginal(token, true);
+        long animalId = createAnimal(token);
+        String response = mockMvc.perform(multipart("/api/v1/photos").file(png(20, 10))
+                        .param("animalId", String.valueOf(animalId))
+                        .param("purpose", "ALBUM")
+                        .param("keepOriginal", "true")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.originalKept").value(true))
+                .andReturn().getResponse().getContentAsString();
+        long photoId = ((Number) JsonPath.read(response, "$.data.photoId")).longValue();
+        Photo before = photoRepository.findById(photoId).orElseThrow();
+        Path original = storageRoot().resolve(before.getOriginalKey());
+        assertThat(original).exists();
+
+        mockMvc.perform(delete("/api/v1/users/me/originals").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deletedCount").value(1));
+
+        Photo after = photoRepository.findById(photoId).orElseThrow();
+        assertThat(after.getOriginalKey()).isNull();
+        assertThat(original).doesNotExist();
+        assertThat(storageRoot().resolve(after.getThumbnailKey())).exists();
+        mockMvc.perform(get("/api/v1/auth/consents").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.keepOriginal").value(false));
+    }
+
+    @Test
     void 사진이_아니면_400_INVALID_FILE이고_저장하지_않는다() throws Exception {
         String token = tokenOfNewUser();
         long animalId = createAnimal(token);
@@ -105,6 +161,19 @@ class PhotoIntegrationTest extends IntegrationTestSupport {
                         .header(HttpHeaders.AUTHORIZATION, tokenOfNewUser()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("ANIMAL_NOT_FOUND"));
+    }
+
+    private Path storageRoot() {
+        return Path.of(storageProperties.localPath());
+    }
+
+    private void agreeKeepOriginal(String token, boolean keepOriginal) throws Exception {
+        mockMvc.perform(put("/api/v1/auth/consents").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "privacy": true, "photoAnalysis": true, "keepOriginal": %s, "notification": false }
+                                """.formatted(keepOriginal)))
+                .andExpect(status().isOk());
     }
 
     private String tokenOfNewUser() {

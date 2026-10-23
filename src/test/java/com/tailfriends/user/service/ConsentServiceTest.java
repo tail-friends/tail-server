@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -56,6 +57,18 @@ class ConsentServiceTest {
     }
 
     @Test
+    void 동의_여부는_가장_최근_행을_보고_답한_적_없으면_false() {
+        given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of(
+                Consent.of(user, ConsentType.KEEP_ORIGINAL, false),
+                Consent.of(user, ConsentType.KEEP_ORIGINAL, true),
+                Consent.of(user, ConsentType.PRIVACY, true)));
+
+        assertThat(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).isFalse();
+        assertThat(consentService.isAgreed(1L, ConsentType.PRIVACY)).isTrue();
+        assertThat(consentService.isAgreed(1L, ConsentType.NOTIFICATION)).isFalse();
+    }
+
+    @Test
     void 처음_저장하면_네_항목을_모두_남긴다() {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of());
@@ -102,5 +115,34 @@ class ConsentServiceTest {
         assertThatThrownBy(() -> consentService.getConsents(1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
+    }
+
+    @Test
+    void 선택_항목_하나를_바꾸면_새_행으로_남긴다() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of(
+                Consent.of(user, ConsentType.NOTIFICATION, true)));
+
+        consentService.changeOptional(1L, ConsentType.NOTIFICATION, false);
+
+        verify(consentRepository).save(argThat(consent ->
+                consent.getType() == ConsentType.NOTIFICATION && !consent.isAgreed()));
+    }
+
+    @Test
+    void 선택_항목이_이미_같은_값이면_남기지_않는다() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of(
+                Consent.of(user, ConsentType.KEEP_ORIGINAL, true)));
+
+        consentService.changeOptional(1L, ConsentType.KEEP_ORIGINAL, true);
+
+        verify(consentRepository, never()).save(any());
+    }
+
+    @Test
+    void 필수_항목은_하나만_바꿀_수_없다() {
+        assertThatThrownBy(() -> consentService.changeOptional(1L, ConsentType.PRIVACY, false))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

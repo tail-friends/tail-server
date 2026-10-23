@@ -82,4 +82,11 @@ public class Photo extends BaseTimeEntity {
     public void clearAnalysisKey() {
         this.analysisKey = null;
     }
+
+    /**
+     * 보관한 원본을 지운 뒤 key를 비운다. 썸네일은 남는다.
+     */
+    public void clearOriginalKey() {
+        this.originalKey = null;
+    }
 }

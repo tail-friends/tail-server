@@ -3,6 +3,7 @@ package com.tailfriends.user.service;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.dto.MeResponse;
 import com.tailfriends.user.repository.UserRepository;
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AnimalRepository animalRepository;
+    private final PhotoFileRemover photoFileRemover;
 
     /**
      * 토큰은 유효하지만 사용자가 없으면(탈퇴 등) 다시 로그인하도록 UNAUTHORIZED.
@@ -28,13 +30,15 @@ public class UserService {
     }
 
     /**
-     * 계정을 즉시 지운다. 개체·기록·건강 경고·캐릭터·리프레시 토큰은 DB의 ON DELETE CASCADE로 함께 지워진다.
+     * 계정을 즉시 지운다. 개체·기록·건강 경고·캐릭터·사진·리프레시 토큰은 DB의 ON DELETE CASCADE로 함께 지워진다.
+     * 사진 파일은 커밋 후 지운다.
      * 이미 없는 사용자면 getMe와 같이 UNAUTHORIZED.
      */
     @Transactional
     public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        photoFileRemover.removeFilesOfUserAfterCommit(userId);
         userRepository.delete(user);
     }
 }

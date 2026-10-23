@@ -51,8 +51,8 @@ docker compose --profile app up -d --build  # 서버 + DB 실행 (처음엔 빌�
 
 - Swagger UI: http://localhost:8080/swagger-ui
 - 최신 코드로 다시 띄우기: `git pull` 후 같은 명령을 다시 실행
-- 끄기: `docker compose --profile app down` (DB 데이터는 남음)
-- DB까지 처음부터: `docker compose --profile app down -v`
+- 끄기: `docker compose --profile app down` (DB 데이터와 올린 사진은 남음)
+- DB와 사진까지 처음부터: `docker compose --profile app down -v`
 - 서버 로그 보기: `docker compose --profile app logs -f app`
 
 ### 토큰 받기 (테스트 로그인)
@@ -68,6 +68,26 @@ curl -X POST http://localhost:8080/api/v1/dev/login \
 - 관리자 API를 쓰려면 `{ "name": "admin", "role": "ADMIN" }`
 - 응답의 `accessToken`을 `Authorization: Bearer {accessToken}` 헤더에 넣습니다. Swagger에서는 오른쪽 위 **Authorize**에 토큰만 붙여 넣습니다.
 - 테스트 로그인은 `docker compose --profile app`으로 띄울 때만 켜집니다. 운영(`prod` 프로필)에서는 항상 꺼져 있습니다.
+
+### 샘플 데이터 만들기
+
+빈 화면 대신 기록이 채워진 화면으로 개발하려면, 테스트 로그인으로 받은 토큰으로 샘플 데이터를 만듭니다.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/dev/sample-data \
+  -H "Authorization: Bearer {accessToken}"
+```
+
+로그인한 사용자에게 개체 3마리와 캐릭터, 오늘 기준 최근 60일 기록(급여·탈피·체중·청소·온습도·메모)이 생깁니다.
+
+| 개체 | 종 | 보이는 상태 |
+|---|---|---|
+| 망고 | 레오파드 게코 | 급여 D-2, 체중 증가, 3주 전 탈피 완료 |
+| 콩이 | 크레스티드 게코 | 급여 2일 지남, 최근 이틀 거부, 체중 감소, 묽은 변 |
+| 단비 | 볼 파이톤 | 오늘 급여, 이틀 전부터 탈피 준비(눈 파래짐) |
+
+- 부를 때마다 3마리가 새로 추가됩니다. 처음부터 다시 하려면 테스트 로그인의 `name`을 바꿉니다.
+- 테스트 로그인과 같이 로컬에서만 켜지고 운영에는 없습니다.
 
 ## 로컬 실행 (백엔드 개발)
 
