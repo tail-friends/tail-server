@@ -15,6 +15,7 @@ import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
@@ -25,6 +26,7 @@ import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.service.ConsentService;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -59,8 +61,16 @@ class PhotoServiceTest {
     @Mock
     private Animal animal;
 
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private CurrentUser currentUser;
+
     @InjectMocks
     private PhotoService photoService;
+
+    @BeforeEach
+    void 현재_사용자() {
+        given(currentUser.id()).willReturn(1L);
+    }
 
     @Test
     void 원본_보관을_원하지_않으면_썸네일만_저장한다() {
@@ -69,7 +79,7 @@ class PhotoServiceTest {
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         given(photoStorage.urlOf(anyString())).willAnswer(invocation -> "http://files/" + invocation.getArgument(0));
 
-        PhotoUploadResponse response = photoService.upload(1L, 12L, PhotoPurpose.CHARACTER, false, FILE);
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE);
 
         verify(photoStorage).save(argThat(key -> key.startsWith("photos/") && key.endsWith("_thumb.jpg")), any());
         verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
@@ -85,7 +95,7 @@ class PhotoServiceTest {
         given(imageResizer.toJpegs(BYTES, 128, 1600)).willReturn(List.of(new byte[] {9}, new byte[] {8}));
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        PhotoUploadResponse response = photoService.upload(1L, 12L, PhotoPurpose.ALBUM, true, FILE);
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.ALBUM, true, FILE);
 
         verify(photoStorage).save(argThat(key -> key.endsWith("_original.jpg")), eq(new byte[] {8}));
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey().endsWith("_original.jpg")));
@@ -99,7 +109,7 @@ class PhotoServiceTest {
         given(imageResizer.toJpegs(BYTES, 128)).willReturn(List.of(new byte[] {9}));
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        PhotoUploadResponse response = photoService.upload(1L, 12L, PhotoPurpose.ALBUM, true, FILE);
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.ALBUM, true, FILE);
 
         verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
@@ -113,7 +123,7 @@ class PhotoServiceTest {
         given(imageResizer.toJpegs(BYTES, 128, 1600)).willReturn(List.of(new byte[] {9}, new byte[] {8}));
         willThrow(new IllegalStateException("DB 오류")).given(photoRepository).save(any());
 
-        assertThatThrownBy(() -> photoService.upload(1L, 12L, PhotoPurpose.ALBUM, true, FILE))
+        assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.ALBUM, true, FILE))
                 .isInstanceOf(IllegalStateException.class);
         verify(photoStorage).delete(argThat(key -> key.endsWith("_thumb.jpg")));
         verify(photoStorage).delete(argThat(key -> key.endsWith("_original.jpg")));
@@ -123,7 +133,7 @@ class PhotoServiceTest {
     void 남의_개체면_ANIMAL_NOT_FOUND() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> photoService.upload(1L, 12L, PhotoPurpose.CHARACTER, false, FILE))
+        assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
         verify(photoStorage, never()).save(anyString(), any());
@@ -134,7 +144,7 @@ class PhotoServiceTest {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
         MockMultipartFile empty = new MockMultipartFile("file", "empty.jpg", "image/jpeg", new byte[0]);
 
-        assertThatThrownBy(() -> photoService.upload(1L, 12L, PhotoPurpose.CHARACTER, false, empty))
+        assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.CHARACTER, false, empty))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_FILE);
     }

@@ -37,7 +37,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 사진을_올리면_201과_썸네일_주소를_돌려준다() throws Exception {
-        given(photoService.upload(eq(1L), eq(12L), eq(PhotoPurpose.CHARACTER), eq(true), any()))
+        given(photoService.upload(eq(12L), eq(PhotoPurpose.CHARACTER), eq(true), any()))
                 .willReturn(new PhotoUploadResponse(301L, "http://localhost:8080/files/photos/a_thumb.jpg", true));
 
         mockMvc.perform(multipart("/api/v1/photos").file(FILE)
@@ -51,7 +51,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void keepOriginal을_안_보내면_보관하지_않는다() throws Exception {
-        given(photoService.upload(eq(1L), eq(12L), eq(PhotoPurpose.ALBUM), eq(false), any()))
+        given(photoService.upload(eq(12L), eq(PhotoPurpose.ALBUM), eq(false), any()))
                 .willReturn(new PhotoUploadResponse(302L, "http://localhost:8080/files/photos/b_thumb.jpg", false));
 
         mockMvc.perform(multipart("/api/v1/photos").file(FILE).param("animalId", "12").param("purpose", "ALBUM"))
@@ -78,7 +78,7 @@ class PhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 사진이_아니면_400_INVALID_FILE() throws Exception {
-        given(photoService.upload(eq(1L), eq(12L), eq(PhotoPurpose.ALBUM), eq(false), any()))
+        given(photoService.upload(eq(12L), eq(PhotoPurpose.ALBUM), eq(false), any()))
                 .willThrow(new BusinessException(ErrorCode.INVALID_FILE));
 
         mockMvc.perform(multipart("/api/v1/photos").file(FILE).param("animalId", "12").param("purpose", "ALBUM"))
