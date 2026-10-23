@@ -16,6 +16,7 @@ import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.AccessTokenClaims;
 import com.tailfriends.global.security.JwtProperties;
 import com.tailfriends.global.security.JwtProvider;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.domain.User;
@@ -37,7 +38,7 @@ class TokenServiceTest {
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private final JwtProvider jwtProvider = new JwtProvider(jwtProperties, clock);
     private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
-    private final TokenService tokenService = new TokenService(jwtProvider, jwtProperties, refreshTokenRepository, clock);
+    private final TokenService tokenService = new TokenService(CurrentUserStub.of(3L), jwtProvider, jwtProperties, refreshTokenRepository, clock);
 
     @Test
     void 액세스_토큰에는_사용자_ID와_권한이_들어간다() {
@@ -117,7 +118,7 @@ class TokenServiceTest {
 
     @Test
     void 로그아웃하면_내_리프레시_토큰의_해시로_지운다() {
-        tokenService.revoke(3L, "my-refresh");
+        tokenService.revoke("my-refresh");
 
         verify(refreshTokenRepository).deleteByTokenHashAndUserId(RefreshToken.hash("my-refresh"), 3L);
     }

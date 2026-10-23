@@ -16,6 +16,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.auth.dto.SampleDataResponse;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
@@ -47,7 +48,7 @@ class DevSampleDataServiceTest {
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final AnimalCharacterRepository characterRepository = mock(AnimalCharacterRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
-    private final DevSampleDataService service = new DevSampleDataService(userRepository, speciesRepository,
+    private final DevSampleDataService service = new DevSampleDataService(CurrentUserStub.of(USER_ID), userRepository, speciesRepository,
             animalRepository, characterRepository, logRepository, CLOCK);
 
     @BeforeEach
@@ -65,7 +66,7 @@ class DevSampleDataServiceTest {
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user()));
         given(speciesRepository.findByName(anyString())).willReturn(Optional.empty());
 
-        SampleDataResponse response = service.create(USER_ID);
+        SampleDataResponse response = service.create();
 
         assertThat(response.animalIds()).containsExactly(11L, 12L, 13L);
         assertThat(response.logCount()).isPositive();
@@ -78,7 +79,7 @@ class DevSampleDataServiceTest {
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user()));
         given(speciesRepository.findByName(anyString())).willReturn(Optional.empty());
 
-        service.create(USER_ID);
+        service.create();
 
         Animal mango = savedAnimals().get(0);
         assertThat(mango.getName()).isEqualTo("망고");
@@ -92,7 +93,7 @@ class DevSampleDataServiceTest {
         given(speciesRepository.findByName(anyString())).willReturn(Optional.empty());
         given(speciesRepository.findByName("레오파드 게코")).willReturn(Optional.of(species("레오파드 게코")));
 
-        service.create(USER_ID);
+        service.create();
 
         List<Animal> animals = savedAnimals();
         assertThat(animals.get(0).getSpecies()).isNotNull();
@@ -104,7 +105,7 @@ class DevSampleDataServiceTest {
     void 사용자가_없으면_UNAUTHORIZED() {
         given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(USER_ID))
+        assertThatThrownBy(() -> service.create())
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);

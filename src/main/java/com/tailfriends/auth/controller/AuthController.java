@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,7 +46,7 @@ public class AuthController {
     @Operation(summary = "로그아웃", description = "리프레시 토큰을 폐기한다. 본문 없이 204.")
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@AuthenticationPrincipal Long userId, @Valid @RequestBody LogoutRequest request) {
-        tokenService.revoke(userId, request.refreshToken());
+    public void logout(@Valid @RequestBody LogoutRequest request) {
+        tokenService.revoke(request.refreshToken());
     }
 }
