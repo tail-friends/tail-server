@@ -2,6 +2,7 @@ package com.tailfriends.user.service;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.domain.UserSettings;
@@ -19,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class UserSettingsService {
 
+    private final CurrentUser currentUser;
     private final UserRepository userRepository;
     private final UserSettingsRepository userSettingsRepository;
     private final ConsentService consentService;
@@ -29,7 +30,9 @@ public class UserSettingsService {
     /**
      * 설정을 바꾼 적이 없으면 기본값. 저장하지 않는다.
      */
-    public SettingsResponse getSettings(Long userId) {
+    @Transactional(readOnly = true)
+    public SettingsResponse getSettings() {
+        Long userId = currentUser.id();
         User user = findUser(userId);
         UserSettings settings = userSettingsRepository.findById(userId)
                 .orElseGet(() -> UserSettings.defaultsFor(user));
@@ -37,7 +40,8 @@ public class UserSettingsService {
     }
 
     @Transactional
-    public SettingsResponse updateSettings(Long userId, SettingsUpdateRequest request) {
+    public SettingsResponse updateSettings(SettingsUpdateRequest request) {
+        Long userId = currentUser.id();
         User user = findUser(userId);
         UserSettings settings = userSettingsRepository.findById(userId)
                 .orElseGet(() -> userSettingsRepository.save(UserSettings.defaultsFor(user)));
@@ -60,7 +64,7 @@ public class UserSettingsService {
     }
 
     private SettingsResponse toResponse(Long userId, UserSettings settings) {
-        ConsentResponse consents = consentService.getConsents(userId);
+        ConsentResponse consents = consentService.getConsents();
         return new SettingsResponse(
                 settings.getNotifyTime(),
                 settings.getTempUnit(),

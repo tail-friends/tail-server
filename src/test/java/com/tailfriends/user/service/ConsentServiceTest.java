@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.user.domain.Consent;
 import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.domain.Provider;
@@ -22,6 +23,7 @@ import com.tailfriends.user.repository.ConsentRepository;
 import com.tailfriends.user.repository.UserRepository;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -38,8 +40,16 @@ class ConsentServiceTest {
     @Mock
     private ConsentRepository consentRepository;
 
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private CurrentUser currentUser;
+
     @InjectMocks
     private ConsentService consentService;
+
+    @BeforeEach
+    void 현재_사용자() {
+        given(currentUser.id()).willReturn(1L);
+    }
 
     private final User user = User.builder().provider(Provider.KAKAO).providerId("1").nickname("망고집사").build();
 
@@ -51,7 +61,7 @@ class ConsentServiceTest {
                 Consent.of(user, ConsentType.PRIVACY, true),
                 Consent.of(user, ConsentType.NOTIFICATION, true)));
 
-        ConsentResponse response = consentService.getConsents(1L);
+        ConsentResponse response = consentService.getConsents();
 
         assertThat(response).isEqualTo(new ConsentResponse(true, false, false, false));
     }
@@ -73,7 +83,7 @@ class ConsentServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of());
 
-        ConsentResponse response = consentService.saveConsents(1L, new ConsentRequest(true, true, false, true));
+        ConsentResponse response = consentService.saveConsents(new ConsentRequest(true, true, false, true));
 
         verify(consentRepository, times(4)).save(any());
         assertThat(response).isEqualTo(new ConsentResponse(true, true, false, true));
@@ -88,7 +98,7 @@ class ConsentServiceTest {
                 Consent.of(user, ConsentType.KEEP_ORIGINAL, false),
                 Consent.of(user, ConsentType.NOTIFICATION, true)));
 
-        consentService.saveConsents(1L, new ConsentRequest(true, true, true, false));
+        consentService.saveConsents(new ConsentRequest(true, true, true, false));
 
         ArgumentCaptor<Consent> saved = ArgumentCaptor.forClass(Consent.class);
         verify(consentRepository, times(2)).save(saved.capture());
@@ -102,7 +112,7 @@ class ConsentServiceTest {
     void 필수_항목이_false면_INVALID_INPUT() {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> consentService.saveConsents(1L, new ConsentRequest(true, false, true, true)))
+        assertThatThrownBy(() -> consentService.saveConsents(new ConsentRequest(true, false, true, true)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
         verify(consentRepository, never()).save(any());
@@ -112,7 +122,7 @@ class ConsentServiceTest {
     void 사용자가_없으면_UNAUTHORIZED() {
         given(userRepository.findById(1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> consentService.getConsents(1L))
+        assertThatThrownBy(() -> consentService.getConsents())
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }

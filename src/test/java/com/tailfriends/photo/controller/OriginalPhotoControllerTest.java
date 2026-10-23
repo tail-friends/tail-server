@@ -30,7 +30,7 @@ class OriginalPhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 지운_원본_수를_돌려준다() throws Exception {
-        given(originalPhotoService.deleteAll(1L)).willReturn(new OriginalDeleteResponse(14));
+        given(originalPhotoService.deleteAll()).willReturn(new OriginalDeleteResponse(14));
 
         mockMvc.perform(delete("/api/v1/users/me/originals"))
                 .andExpect(status().isOk())
@@ -41,7 +41,7 @@ class OriginalPhotoControllerTest {
     @Test
     @WithMockUserId(1L)
     void 사용자가_없으면_401() throws Exception {
-        given(originalPhotoService.deleteAll(1L)).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
+        given(originalPhotoService.deleteAll()).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
 
         mockMvc.perform(delete("/api/v1/users/me/originals"))
                 .andExpect(status().isUnauthorized())

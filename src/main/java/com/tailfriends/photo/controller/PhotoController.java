@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -29,11 +28,10 @@ public class PhotoController {
     @PostMapping(value = "/api/v1/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoUploadResponse> upload(
-            @AuthenticationPrincipal Long userId,
             @RequestPart MultipartFile file,
             @RequestParam Long animalId,
             @RequestParam PhotoPurpose purpose,
             @RequestParam(defaultValue = "false") boolean keepOriginal) {
-        return ApiResponse.success(photoService.upload(userId, animalId, purpose, keepOriginal, file));
+        return ApiResponse.success(photoService.upload(animalId, purpose, keepOriginal, file));
     }
 }

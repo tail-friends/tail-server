@@ -2,6 +2,7 @@ package com.tailfriends.user.service;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.user.domain.Consent;
 import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.domain.User;
@@ -18,13 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ConsentService {
 
+    private final CurrentUser currentUser;
     private final UserRepository userRepository;
     private final ConsentRepository consentRepository;
 
-    public ConsentResponse getConsents(Long userId) {
+    @Transactional(readOnly = true)
+    public ConsentResponse getConsents() {
+        Long userId = currentUser.id();
         findUser(userId);
         return ConsentResponse.from(currentOf(userId));
     }
@@ -32,6 +35,7 @@ public class ConsentService {
     /**
      * 항목에 지금 동의한 상태인지. 답한 적 없으면 false.
      */
+    @Transactional(readOnly = true)
     public boolean isAgreed(Long userId, ConsentType type) {
         return Boolean.TRUE.equals(currentOf(userId).get(type));
     }
@@ -40,7 +44,8 @@ public class ConsentService {
      * 필수 항목은 true만 받는다. 현재 상태와 다른 항목만 새 행으로 남겨 이력을 쌓는다.
      */
     @Transactional
-    public ConsentResponse saveConsents(Long userId, ConsentRequest request) {
+    public ConsentResponse saveConsents(ConsentRequest request) {
+        Long userId = currentUser.id();
         User user = findUser(userId);
         Map<ConsentType, Boolean> requested = request.toMap();
         requested.forEach((type, agreed) -> {

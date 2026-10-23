@@ -19,12 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class FeedService {
 
     private final LogRepository logRepository;
     private final Clock clock;
 
+    @Transactional(readOnly = true)
     public FeedSchedule scheduleOf(Animal animal) {
         LocalDate lastFedDate = logRepository.findLastFedDate(animal.getId()).orElse(null);
         return FeedSchedule.of(animal, lastFedDate, KstDate.today(clock));
@@ -33,6 +33,7 @@ public class FeedService {
     /**
      * 개체 ID별 급여 상태. 개체 수와 상관없이 쿼리 한 번으로 조회한다.
      */
+    @Transactional(readOnly = true)
     public Map<Long, FeedSchedule> schedulesOf(List<Animal> animals) {
         if (animals.isEmpty()) {
             return Map.of();

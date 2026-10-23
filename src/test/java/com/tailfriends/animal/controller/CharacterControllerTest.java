@@ -43,7 +43,7 @@ class CharacterControllerTest {
     @Test
     @WithMockUserId(7L)
     void 명세_예시대로_소문자_값을_받아_저장한다() throws Exception {
-        given(characterService.save(eq(7L), eq(12L), any())).willReturn(new CharacterResponse(
+        given(characterService.save(eq(12L), any())).willReturn(new CharacterResponse(
                 RenderStyle.ILLUSTRATION_2D, "gecko", "spots",
                 new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"),
                 new CharacterResponse.Extra(new BigDecimal("0.60"), new BigDecimal("0.80"), new BigDecimal("0.40"))));
@@ -53,7 +53,7 @@ class CharacterControllerTest {
                 .andExpect(jsonPath("$.data.shape").value("gecko"))
                 .andExpect(jsonPath("$.data.colors.body").value("#E0A33A"))
                 .andExpect(jsonPath("$.data.extra.headSize").value(0.6));
-        verify(characterService).save(eq(7L), eq(12L), argThat(request ->
+        verify(characterService).save(eq(12L), argThat(request ->
                 request.shape() == Shape.GECKO && request.patternType() == PatternType.SPOTS));
     }
 
