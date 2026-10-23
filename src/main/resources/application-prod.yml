@@ -1,8 +1,11 @@
 spring:
   jpa:
-    hibernate:
-      ddl-auto: validate
     show-sql: false
+
+# 환경 변수와 상관없이 운영에서는 테스트 로그인을 끈다
+dev:
+  login:
+    enabled: false
 
 springdoc:
   api-docs:

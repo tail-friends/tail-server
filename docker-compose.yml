@@ -18,5 +18,25 @@ services:
       timeout: 5s
       retries: 10
 
+  # 서버까지 함께 띄울 때만: docker compose --profile app up -d --build
+  # 백엔드 개발 중에는 DB만 띄우고(docker compose up -d) 서버는 ./gradlew bootRun으로 실행한다.
+  app:
+    profiles: ["app"]
+    build: .
+    container_name: tailfriends-server
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tailfriends}
+      DEV_LOGIN_ENABLED: "true"
+      STORAGE_LOCAL_PATH: /app/storage
+    ports:
+      - "8080:8080"
+    volumes:
+      - photo-data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  photo-data:

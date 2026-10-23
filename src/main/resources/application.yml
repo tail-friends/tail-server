@@ -12,6 +12,8 @@ spring:
 
   jpa:
     open-in-view: false
+    hibernate:
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -22,19 +24,48 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # 사진은 최대 20MB. 넘으면 400 INVALID_FILE
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+
 springdoc:
   swagger-ui:
     path: /swagger-ui
   api-docs:
     path: /v3/api-docs
 
+# 소셜 로그인 앱 키. 비어 있으면 그 방식으로는 로그인할 수 없다.
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
-  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:30m}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:14d}
+
+# 사진 저장소. 지금은 서버 디스크에 저장하고 public-url/{key}로 내려준다.
+storage:
+  local-path: ${STORAGE_LOCAL_PATH:./storage}
+  public-url: ${STORAGE_PUBLIC_URL:http://localhost:8080/files}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 ai:
   api-key: ${AI_API_KEY:}
+
+# 로컬 테스트 로그인 (POST /api/v1/dev/login). 소셜 키 없이 토큰을 받는다. 운영 프로필에서는 항상 꺼진다.
+dev:
+  login:
+    enabled: ${DEV_LOGIN_ENABLED:false}
