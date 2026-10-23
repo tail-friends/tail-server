@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,9 +22,8 @@ public class CharacterController {
 
     @Operation(summary = "캐릭터 저장", description = "없으면 만들고 있으면 바꾼다. 색은 #RRGGBB, extra는 0~1. 지금은 photoId 없이 보낸다.")
     @PutMapping("/api/v1/animals/{animalId}/character")
-    public ApiResponse<CharacterResponse> save(@AuthenticationPrincipal Long userId,
-                                               @PathVariable Long animalId,
+    public ApiResponse<CharacterResponse> save(@PathVariable Long animalId,
                                                @Valid @RequestBody CharacterSaveRequest request) {
-        return ApiResponse.success(characterService.save(userId, animalId, request));
+        return ApiResponse.success(characterService.save(animalId, request));
     }
 }

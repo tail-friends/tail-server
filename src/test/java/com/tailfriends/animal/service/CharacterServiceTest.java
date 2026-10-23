@@ -19,6 +19,7 @@ import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.species.domain.Shape;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class CharacterServiceTest {
 
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final AnimalCharacterRepository characterRepository = mock(AnimalCharacterRepository.class);
-    private final CharacterService characterService = new CharacterService(animalRepository, characterRepository);
+    private final CharacterService characterService = new CharacterService(CurrentUserStub.of(1L), animalRepository, characterRepository);
 
     @Test
     void 캐릭터가_없으면_새로_만들고_색은_대문자로_저장한다() {
@@ -35,7 +36,7 @@ class CharacterServiceTest {
         given(characterRepository.findById(12L)).willReturn(Optional.empty());
         given(characterRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        CharacterResponse response = characterService.save(1L, 12L, request(null, "#e0a33a"));
+        CharacterResponse response = characterService.save(12L, request(null, "#e0a33a"));
 
         assertThat(response.renderStyle()).isEqualTo(RenderStyle.ILLUSTRATION_2D);
         assertThat(response.shape()).isEqualTo("gecko");
@@ -49,7 +50,7 @@ class CharacterServiceTest {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(mock(Animal.class)));
         given(characterRepository.findById(12L)).willReturn(Optional.of(existing));
 
-        characterService.save(1L, 12L, request(null, "#FFFFFF"));
+        characterService.save(12L, request(null, "#FFFFFF"));
 
         verify(characterRepository, never()).save(any());
         assertThat(existing.getColorBody()).isEqualTo("#FFFFFF");
@@ -59,7 +60,7 @@ class CharacterServiceTest {
     void 아직_사진을_연결할_수_없어서_photoId가_있으면_INVALID_INPUT() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(mock(Animal.class)));
 
-        assertThatThrownBy(() -> characterService.save(1L, 12L, request(301L, "#E0A33A")))
+        assertThatThrownBy(() -> characterService.save(12L, request(301L, "#E0A33A")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -69,7 +70,7 @@ class CharacterServiceTest {
     void 남의_개체면_ANIMAL_NOT_FOUND() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> characterService.save(1L, 12L, request(null, "#E0A33A")))
+        assertThatThrownBy(() -> characterService.save(12L, request(null, "#E0A33A")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);

@@ -11,6 +11,7 @@ import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.species.domain.Species;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class AnimalService {
 
+    private final CurrentUser currentUser;
     private final AnimalRepository animalRepository;
     private final SpeciesRepository speciesRepository;
     private final UserRepository userRepository;
@@ -38,7 +40,8 @@ public class AnimalService {
     private final PhotoFileRemover photoFileRemover;
 
     @Transactional
-    public AnimalCreateResponse create(Long userId, AnimalCreateRequest request) {
+    public AnimalCreateResponse create(AnimalCreateRequest request) {
+        Long userId = currentUser.id();
         validateHatchDate(request.hatchDate());
         Species species = null;
         String speciesName;
@@ -65,7 +68,8 @@ public class AnimalService {
         return new AnimalCreateResponse(animal.getId());
     }
 
-    public AnimalListResponse getAnimals(Long userId) {
+    public AnimalListResponse getAnimals() {
+        Long userId = currentUser.id();
         List<Animal> animals = animalRepository.findAllByUserIdOrderByIdAsc(userId);
         Map<Long, FeedSchedule> feeds = feedService.schedulesOf(animals);
         return new AnimalListResponse(animals.stream()
@@ -73,13 +77,15 @@ public class AnimalService {
                 .toList());
     }
 
-    public AnimalResponse getAnimal(Long userId, Long animalId) {
+    public AnimalResponse getAnimal(Long animalId) {
+        Long userId = currentUser.id();
         Animal animal = findAnimal(userId, animalId);
         return AnimalResponse.of(animal, feedService.scheduleOf(animal));
     }
 
     @Transactional
-    public AnimalResponse update(Long userId, Long animalId, AnimalUpdateRequest request) {
+    public AnimalResponse update(Long animalId, AnimalUpdateRequest request) {
+        Long userId = currentUser.id();
         Animal animal = findAnimal(userId, animalId);
         validateHatchDate(request.hatchDate());
         if (request.speciesId() != null) {
@@ -102,7 +108,8 @@ public class AnimalService {
      * 기록·캐릭터·사진 행은 DB의 ON DELETE CASCADE로 함께 지워진다. 사진 파일은 커밋 후 지운다.
      */
     @Transactional
-    public void delete(Long userId, Long animalId) {
+    public void delete(Long animalId) {
+        Long userId = currentUser.id();
         Animal animal = findAnimal(userId, animalId);
         photoFileRemover.removeFilesOfAnimalAfterCommit(animal.getId());
         animalRepository.delete(animal);
