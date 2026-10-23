@@ -58,7 +58,7 @@ class AnimalControllerTest {
     @Test
     @WithMockUserId(7L)
     void 개체를_등록하면_201과_ID를_돌려준다() throws Exception {
-        given(animalService.create(eq(7L), any())).willReturn(new AnimalCreateResponse(12L));
+        given(animalService.create(any())).willReturn(new AnimalCreateResponse(12L));
 
         mockMvc.perform(post("/api/v1/animals").contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
                 .andExpect(status().isCreated())
@@ -87,7 +87,7 @@ class AnimalControllerTest {
     @Test
     @WithMockUserId(7L)
     void 개체_상세를_명세_형식으로_돌려준다() throws Exception {
-        given(animalService.getAnimal(7L, 12L)).willReturn(new AnimalResponse(
+        given(animalService.getAnimal(12L)).willReturn(new AnimalResponse(
                 12L, "망고", "레오파드 게코", "탠저린", Sex.FEMALE, LocalDate.of(2025, 6, 20), 4, "핫존 32℃",
                 new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1),
                 new ShedSummary(LocalDate.of(2026, 9, 22), false, 32, LocalDate.of(2026, 10, 24), false),
@@ -126,7 +126,7 @@ class AnimalControllerTest {
     @Test
     @WithMockUserId(7L)
     void 없거나_남의_개체면_404() throws Exception {
-        given(animalService.getAnimal(7L, 99L)).willThrow(new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
+        given(animalService.getAnimal(99L)).willThrow(new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/animals/99"))
                 .andExpect(status().isNotFound())
@@ -140,7 +140,7 @@ class AnimalControllerTest {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        verify(animalService).delete(7L, 12L);
+        verify(animalService).delete(12L);
     }
 
     @Test

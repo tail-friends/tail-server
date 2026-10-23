@@ -17,6 +17,7 @@ import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.service.PhotoFileRemover;
@@ -47,8 +48,8 @@ class AnimalServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
     private final PhotoFileRemover photoFileRemover = mock(PhotoFileRemover.class);
-    private final AnimalService animalService = new AnimalService(animalRepository, speciesRepository, userRepository,
-            new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
+    private final AnimalService animalService = new AnimalService(CurrentUserStub.of(USER_ID), animalRepository,
+            speciesRepository, userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
             new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK,
             photoFileRemover);
 
@@ -57,7 +58,7 @@ class AnimalServiceTest {
         given(speciesRepository.findById(1L)).willReturn(Optional.of(species("레오파드 게코")));
         given(animalRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 12L));
 
-        Long id = animalService.create(USER_ID, createRequest(1L, "무시되는 이름", null)).id();
+        Long id = animalService.create(createRequest(1L, "무시되는 이름", null)).id();
 
         Animal saved = captureSaved();
         assertThat(id).isEqualTo(12L);
@@ -70,7 +71,7 @@ class AnimalServiceTest {
     void 목록에_없는_종은_종_이름만으로_등록한다() {
         given(animalRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 12L));
 
-        animalService.create(USER_ID, createRequest(null, " 사바나 모니터 ", null));
+        animalService.create(createRequest(null, " 사바나 모니터 ", null));
 
         Animal saved = captureSaved();
         assertThat(saved.getSpecies()).isNull();
@@ -79,7 +80,7 @@ class AnimalServiceTest {
 
     @Test
     void 종_ID와_종_이름이_모두_없으면_등록하지_않는다() {
-        assertInvalidInput(() -> animalService.create(USER_ID, createRequest(null, " ", null)));
+        assertInvalidInput(() -> animalService.create(createRequest(null, " ", null)));
         verify(animalRepository, never()).save(any());
     }
 
@@ -87,28 +88,28 @@ class AnimalServiceTest {
     void 없는_종_ID로는_등록하지_않는다() {
         given(speciesRepository.findById(99L)).willReturn(Optional.empty());
 
-        assertInvalidInput(() -> animalService.create(USER_ID, createRequest(99L, null, null)));
+        assertInvalidInput(() -> animalService.create(createRequest(99L, null, null)));
     }
 
     @Test
     void 해칭일은_한국_날짜로_오늘까지_허용한다() {
         given(animalRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 12L));
 
-        animalService.create(USER_ID, createRequest(null, "게코", LocalDate.of(2026, 10, 20)));
+        animalService.create(createRequest(null, "게코", LocalDate.of(2026, 10, 20)));
 
         assertThat(captureSaved().getHatchDate()).isEqualTo(LocalDate.of(2026, 10, 20));
     }
 
     @Test
     void 해칭일이_한국_날짜로_내일이면_등록하지_않는다() {
-        assertInvalidInput(() -> animalService.create(USER_ID, createRequest(null, "게코", LocalDate.of(2026, 10, 21))));
+        assertInvalidInput(() -> animalService.create(createRequest(null, "게코", LocalDate.of(2026, 10, 21))));
     }
 
     @Test
     void 남의_개체나_없는_개체는_ANIMAL_NOT_FOUND() {
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> animalService.getAnimal(USER_ID, 12L))
+        assertThatThrownBy(() -> animalService.getAnimal(12L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
@@ -119,7 +120,7 @@ class AnimalServiceTest {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
-        AnimalResponse response = animalService.update(USER_ID, 12L,
+        AnimalResponse response = animalService.update(12L,
                 new AnimalUpdateRequest(null, null, null, null, null, null, 5, "성체가 되어 주기 변경"));
 
         assertThat(response.feedIntervalDays()).isEqualTo(5);
@@ -135,7 +136,7 @@ class AnimalServiceTest {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
-        animalService.update(USER_ID, 12L,
+        animalService.update(12L,
                 new AnimalUpdateRequest(null, null, "사바나 모니터", null, null, null, null, null));
 
         assertThat(animal.getSpecies()).isNull();
@@ -147,7 +148,7 @@ class AnimalServiceTest {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
-        animalService.delete(USER_ID, 12L);
+        animalService.delete(12L);
 
         verify(animalRepository).delete(animal);
         verify(photoFileRemover).removeFilesOfAnimalAfterCommit(12L);

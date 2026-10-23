@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AdminSpeciesService {
 
     private static final String DUPLICATE_NAME_MESSAGE = "이미 있는 종 이름이에요";
@@ -25,6 +24,7 @@ public class AdminSpeciesService {
     /**
      * 숨긴 종까지 모두.
      */
+    @Transactional(readOnly = true)
     public AdminSpeciesListResponse getSpeciesList() {
         return new AdminSpeciesListResponse(speciesRepository.findAllByOrderByIdAsc().stream()
                 .map(AdminSpeciesResponse::from)

@@ -34,7 +34,7 @@ class UserControllerTest {
     @Test
     @WithMockUserId(1L)
     void 내_정보를_명세_형식으로_돌려준다() throws Exception {
-        given(userService.getMe(1L)).willReturn(new MeResponse(1L, "김성찬", "keeper@example.com", 120, 3));
+        given(userService.getMe()).willReturn(new MeResponse(1L, "김성찬", "keeper@example.com", 120, 3));
 
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isOk())
@@ -48,7 +48,7 @@ class UserControllerTest {
     @Test
     @WithMockUserId(1L)
     void 사용자가_없으면_401() throws Exception {
-        given(userService.getMe(1L)).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
+        given(userService.getMe()).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
 
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized())
@@ -67,13 +67,13 @@ class UserControllerTest {
         mockMvc.perform(delete("/api/v1/auth/me"))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
-        verify(userService).withdraw(1L);
+        verify(userService).withdraw();
     }
 
     @Test
     @WithMockUserId(1L)
     void 이미_탈퇴한_사용자면_401() throws Exception {
-        willThrow(new BusinessException(ErrorCode.UNAUTHORIZED)).given(userService).withdraw(1L);
+        willThrow(new BusinessException(ErrorCode.UNAUTHORIZED)).given(userService).withdraw();
 
         mockMvc.perform(delete("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized())

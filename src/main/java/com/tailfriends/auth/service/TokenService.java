@@ -5,6 +5,7 @@ import com.tailfriends.auth.dto.TokenResponse;
 import com.tailfriends.auth.repository.RefreshTokenRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.security.JwtProperties;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.user.domain.User;
@@ -21,6 +22,7 @@ public class TokenService {
 
     private static final int REFRESH_TOKEN_BYTES = 32;
 
+    private final CurrentUser currentUser;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private final JwtProvider jwtProvider;
@@ -65,7 +67,8 @@ public class TokenService {
      * 내 리프레시 토큰을 지운다. 없거나 남의 토큰이면 아무것도 하지 않는다.
      */
     @Transactional
-    public void revoke(Long userId, String refreshToken) {
+    public void revoke(String refreshToken) {
+        Long userId = currentUser.id();
         refreshTokenRepository.deleteByTokenHashAndUserId(RefreshToken.hash(refreshToken), userId);
     }
 

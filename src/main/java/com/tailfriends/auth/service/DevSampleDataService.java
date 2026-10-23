@@ -7,6 +7,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.auth.dto.SampleDataResponse;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.repository.LogRepository;
@@ -33,6 +34,7 @@ public class DevSampleDataService {
 
     static final String MEMO = "테스트용 샘플 개체";
 
+    private final CurrentUser currentUser;
     private final UserRepository userRepository;
     private final SpeciesRepository speciesRepository;
     private final AnimalRepository animalRepository;
@@ -44,7 +46,8 @@ public class DevSampleDataService {
      * 부를 때마다 개체 3마리와 캐릭터, 최근 60일 기록을 새로 만든다. 종 목록에서 이름이 바뀐 종은 종 이름만으로 등록한다.
      */
     @Transactional
-    public SampleDataResponse create(Long userId) {
+    public SampleDataResponse create() {
+        Long userId = currentUser.id();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
         LocalDate today = KstDate.today(clock);

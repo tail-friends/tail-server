@@ -9,10 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-
 public class SpeciesService {
 
     private final SpeciesRepository speciesRepository;
+
     @Transactional(readOnly = true)
     public SpeciesListResponse getSpeciesList() {
         return new SpeciesListResponse(speciesRepository.findAllByHiddenFalseOrderByIdAsc().stream()

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.domain.Provider;
@@ -25,6 +26,7 @@ import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.repository.UserSettingsRepository;
 import java.time.LocalTime;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -43,8 +45,16 @@ class UserSettingsServiceTest {
     @Mock
     private ConsentService consentService;
 
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private CurrentUser currentUser;
+
     @InjectMocks
     private UserSettingsService userSettingsService;
+
+    @BeforeEach
+    void 현재_사용자() {
+        given(currentUser.id()).willReturn(1L);
+    }
 
     private final User user = User.builder().provider(Provider.KAKAO).providerId("1").nickname("망고집사").build();
 
@@ -52,9 +62,9 @@ class UserSettingsServiceTest {
     void 바꾼_적이_없으면_기본값을_저장하지_않고_돌려준다() {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(userSettingsRepository.findById(1L)).willReturn(Optional.empty());
-        given(consentService.getConsents(1L)).willReturn(new ConsentResponse(true, true, false, true));
+        given(consentService.getConsents()).willReturn(new ConsentResponse(true, true, false, true));
 
-        SettingsResponse response = userSettingsService.getSettings(1L);
+        SettingsResponse response = userSettingsService.getSettings();
 
         assertThat(response).isEqualTo(new SettingsResponse(
                 LocalTime.of(9, 0), TempUnit.C, false, AlertRules.DEFAULT, true));
@@ -66,9 +76,9 @@ class UserSettingsServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(userSettingsRepository.findById(1L)).willReturn(Optional.empty());
         given(userSettingsRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
-        given(consentService.getConsents(1L)).willReturn(new ConsentResponse(true, true, false, true));
+        given(consentService.getConsents()).willReturn(new ConsentResponse(true, true, false, true));
 
-        SettingsResponse response = userSettingsService.updateSettings(1L, new SettingsUpdateRequest(
+        SettingsResponse response = userSettingsService.updateSettings(new SettingsUpdateRequest(
                 LocalTime.of(8, 30), TempUnit.F, null, new AlertRulesUpdate(5, null, null, null), null));
 
         assertThat(response.notifyTime()).isEqualTo(LocalTime.of(8, 30));
@@ -81,10 +91,9 @@ class UserSettingsServiceTest {
     void 원본_보관과_알림은_동의_항목으로_바꾼다() {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(userSettingsRepository.findById(1L)).willReturn(Optional.of(UserSettings.defaultsFor(user)));
-        given(consentService.getConsents(1L)).willReturn(new ConsentResponse(true, true, true, false));
+        given(consentService.getConsents()).willReturn(new ConsentResponse(true, true, true, false));
 
-        SettingsResponse response = userSettingsService.updateSettings(1L,
-                new SettingsUpdateRequest(null, null, true, null, false));
+        SettingsResponse response = userSettingsService.updateSettings(new SettingsUpdateRequest(null, null, true, null, false));
 
         verify(consentService).changeOptional(eq(1L), eq(ConsentType.KEEP_ORIGINAL), eq(true));
         verify(consentService).changeOptional(eq(1L), eq(ConsentType.NOTIFICATION), eq(false));
@@ -107,7 +116,7 @@ class UserSettingsServiceTest {
     void 사용자가_없으면_UNAUTHORIZED() {
         given(userRepository.findById(1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userSettingsService.getSettings(1L))
+        assertThatThrownBy(() -> userSettingsService.getSettings())
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }

@@ -52,7 +52,7 @@ class LogControllerTest {
     @Test
     @WithMockUserId(7L)
     void 기록을_작성하면_201과_ID를_돌려준다() throws Exception {
-        given(logService.create(eq(7L), any())).willReturn(new LogCreateResponse(902L, List.of(),
+        given(logService.create(any())).willReturn(new LogCreateResponse(902L, List.of(),
                 new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 18), LocalDate.of(2026, 10, 22), 2)));
 
         mockMvc.perform(post("/api/v1/logs").contentType(MediaType.APPLICATION_JSON).content(FEED_BODY))
@@ -67,7 +67,7 @@ class LogControllerTest {
     @Test
     @WithMockUserId
     void 같은_clientId로_다시_보내면_409와_기존_기록_ID를_돌려준다() throws Exception {
-        given(logService.create(any(), any())).willThrow(new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
+        given(logService.create(any())).willThrow(new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
                 ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogIdResponse(880L)));
 
         mockMvc.perform(post("/api/v1/logs").contentType(MediaType.APPLICATION_JSON).content(FEED_BODY))
@@ -100,7 +100,7 @@ class LogControllerTest {
     @Test
     @WithMockUserId(7L)
     void 기록_목록은_종류에_해당하는_필드만_내려준다() throws Exception {
-        given(logService.getLogs(7L, 12L, null, null, 20)).willReturn(new LogListResponse(List.of(
+        given(logService.getLogs(12L, null, null, 20)).willReturn(new LogListResponse(List.of(
                 new LogResponse(901L, LogType.FEED, LocalDate.of(2026, 10, 14), "밀웜", 5, false, true,
                         null, null, null, null, null, null, null, null, null),
                 new LogResponse(880L, LogType.SHED, LocalDate.of(2026, 9, 22), null, null, null, null,
@@ -139,14 +139,14 @@ class LogControllerTest {
         mockMvc.perform(delete("/api/v1/logs/902"))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
-        verify(logService).delete(7L, 902L);
+        verify(logService).delete(902L);
     }
 
     @Test
     @WithMockUserId
     void 없는_기록을_삭제하면_LOG_NOT_FOUND() throws Exception {
         willThrow(new BusinessException(ErrorCode.LOG_NOT_FOUND))
-                .given(logService).delete(any(), eq(999L));
+                .given(logService).delete(eq(999L));
 
         mockMvc.perform(delete("/api/v1/logs/999"))
                 .andExpect(status().isNotFound())

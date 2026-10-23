@@ -121,7 +121,7 @@ class AuthControllerTest {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        verify(tokenService).revoke(5L, "my-refresh");
+        verify(tokenService).revoke("my-refresh");
     }
 
     @Test
