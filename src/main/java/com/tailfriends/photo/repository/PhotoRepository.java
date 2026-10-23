@@ -19,13 +19,13 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
      * 지워진 엔티티를 가리킨다는 TransientObjectException이 난다.
      */
     @Query("""
-            select new com.tailfriends.photo.repository.PhotoFileKeys(p.thumbnailKey, p.originalKey)
+            select new com.tailfriends.photo.repository.PhotoFileKeys(p.thumbnailKey, p.originalKey, p.analysisKey)
             from Photo p where p.user.id = :userId
             """)
     List<PhotoFileKeys> findFileKeysByUserId(@Param("userId") Long userId);
 
     @Query("""
-            select new com.tailfriends.photo.repository.PhotoFileKeys(p.thumbnailKey, p.originalKey)
+            select new com.tailfriends.photo.repository.PhotoFileKeys(p.thumbnailKey, p.originalKey, p.analysisKey)
             from Photo p where p.animal.id = :animalId
             """)
     List<PhotoFileKeys> findFileKeysByAnimalId(@Param("animalId") Long animalId);
