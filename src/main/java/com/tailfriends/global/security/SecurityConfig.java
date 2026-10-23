@@ -31,7 +31,8 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_GET_URLS = {
             "/api/v1/species",
-            "/api/v1/species/*/guide"
+            "/api/v1/species/*/guide",
+            "/files/**"
     };
 
     private final JwtProvider jwtProvider;

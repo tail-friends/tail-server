@@ -107,6 +107,19 @@ jobs:
           count=$(curl -fsS http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token" | jq '.data.animals | length')
           test "$count" -eq 3
 
+      # 컨테이너 안의 서버 사용자가 사진 볼륨에 쓸 수 있는지 확인한다
+      - name: Upload a photo
+        run: |
+          token=$(curl -fsS -X POST http://localhost:8080/api/v1/dev/login \
+            -H 'Content-Type: application/json' -d '{"name":"ci-photo"}' | jq -r '.data.accessToken')
+          animal_id=$(curl -fsS -X POST http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token" \
+            -H 'Content-Type: application/json' -d '{"name":"ci","speciesId":1,"feedIntervalDays":4}' | jq -r '.data.id')
+          echo 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGN4sNgKjhiQOQC6Eg3p4y4phwAAAABJRU5ErkJggg==' \
+            | base64 -d > photo.png
+          thumbnail_url=$(curl -fsS -X POST http://localhost:8080/api/v1/photos -H "Authorization: Bearer $token" \
+            -F 'file=@photo.png;type=image/png' -F "animalId=$animal_id" -F purpose=ALBUM | jq -r '.data.thumbnailUrl')
+          curl -fsS -o /dev/null "$thumbnail_url"
+
       - name: Show server logs
         if: failure()
         run: docker compose --profile app logs app

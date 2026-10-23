@@ -12,6 +12,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.species.domain.Species;
 import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.repository.UserRepository;
@@ -34,6 +35,7 @@ public class AnimalService {
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final Clock clock;
+    private final PhotoFileRemover photoFileRemover;
 
     @Transactional
     public AnimalCreateResponse create(Long userId, AnimalCreateRequest request) {
@@ -96,9 +98,14 @@ public class AnimalService {
         return AnimalResponse.of(animal, feedService.scheduleOf(animal));
     }
 
+    /**
+     * 기록·캐릭터·사진 행은 DB의 ON DELETE CASCADE로 함께 지워진다. 사진 파일은 커밋 후 지운다.
+     */
     @Transactional
     public void delete(Long userId, Long animalId) {
-        animalRepository.delete(findAnimal(userId, animalId));
+        Animal animal = findAnimal(userId, animalId);
+        photoFileRemover.removeFilesOfAnimalAfterCommit(animal.getId());
+        animalRepository.delete(animal);
     }
 
     /**
