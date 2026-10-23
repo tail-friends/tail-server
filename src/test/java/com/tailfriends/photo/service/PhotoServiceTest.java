@@ -79,13 +79,27 @@ class PhotoServiceTest {
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         given(photoStorage.urlOf(anyString())).willAnswer(invocation -> "http://files/" + invocation.getArgument(0));
 
-        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE);
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
 
         verify(photoStorage).save(argThat(key -> key.startsWith("photos/") && key.endsWith("_thumb.jpg")), any());
-        verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
+        verify(photoStorage, never()).save(argThat(key -> !key.endsWith("_thumb.jpg")), any());
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
         assertThat(response.originalKept()).isFalse();
         assertThat(response.thumbnailUrl()).startsWith("http://files/photos/").endsWith("_thumb.jpg");
+    }
+
+    @Test
+    void 원본을_보관하지_않는_캐릭터_사진은_1024px_분석용_사본을_둔다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(imageResizer.toJpegs(BYTES, 128, 1024)).willReturn(List.of(new byte[] {9}, new byte[] {7}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE);
+
+        verify(photoStorage).save(argThat(key -> key.endsWith("_analysis.jpg")), eq(new byte[] {7}));
+        verify(photoRepository).save(argThat((Photo photo) ->
+                photo.getOriginalKey() == null && photo.getAnalysisKey().endsWith("_analysis.jpg")));
+        assertThat(response.originalKept()).isFalse();
     }
 
     @Test
@@ -113,6 +127,20 @@ class PhotoServiceTest {
 
         verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
+        assertThat(response.originalKept()).isFalse();
+    }
+
+    @Test
+    void 원본_보관에_동의하지_않은_캐릭터_사진은_분석용_사본을_둔다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(false);
+        given(imageResizer.toJpegs(BYTES, 128, 1024)).willReturn(List.of(new byte[] {9}, new byte[] {7}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, true, FILE);
+
+        verify(photoRepository).save(argThat((Photo photo) ->
+                photo.getOriginalKey() == null && photo.getAnalysisKey().endsWith("_analysis.jpg")));
         assertThat(response.originalKept()).isFalse();
     }
 

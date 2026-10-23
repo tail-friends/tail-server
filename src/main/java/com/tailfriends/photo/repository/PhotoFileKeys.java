@@ -9,13 +9,14 @@ import java.util.stream.Stream;
  */
 public record PhotoFileKeys(
         String thumbnailKey,
-        String originalKey
+        String originalKey,
+        String analysisKey
 ) {
 
     /**
-     * 원본을 보관하지 않았으면 썸네일만.
+     * 원본이나 AI 분석용 사본이 없으면 빼고 돌려준다.
      */
     public List<String> all() {
-        return Stream.of(thumbnailKey, originalKey).filter(Objects::nonNull).toList();
+        return Stream.of(thumbnailKey, originalKey, analysisKey).filter(Objects::nonNull).toList();
     }
 }
