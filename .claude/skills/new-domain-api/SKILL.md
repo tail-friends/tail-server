@@ -68,7 +68,8 @@ public class Animal extends BaseTimeEntity {
 
 ## 5. 서비스 (`{도메인}/service`)
 
-- 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에 `@Transactional`.
+- `@Transactional`은 클래스에 달지 않고 public 메서드마다 단다. 조회는 `@Transactional(readOnly = true)`, 쓰기는 `@Transactional`.
+- 현재 사용자는 `CurrentUser`를 주입받아 `currentUser.id()`로 확인한다. 컨트롤러에서 사용자 ID를 넘기지 않는다.
 - 없거나 남의 데이터면 `throw new BusinessException(ErrorCode.XXX_NOT_FOUND)`.
 - 엔티티가 아닌 응답 DTO를 반환한다.
 

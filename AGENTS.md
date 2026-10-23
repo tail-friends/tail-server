@@ -138,6 +138,7 @@ com.tailfriends
 - 새 에러 코드는 `global/exception/ErrorCode`에 추가하고, 노션 API 명세서의 공통 에러 코드 표에도 추가한다.
 - 요청 검증은 DTO에 Bean Validation 어노테이션을 달고 컨트롤러 파라미터에 `@Valid`를 붙인다. 검증 실패는 `GlobalExceptionHandler`가 `INVALID_INPUT`으로 바꾼다.
 - 엔티티를 컨트롤러 밖으로 내보내지 않는다. 서비스에서 DTO로 바꿔 반환한다.
+- `@Transactional`은 서비스 클래스가 아니라 public 메서드마다 단다. 조회는 `@Transactional(readOnly = true)`, 쓰기는 `@Transactional`.
 
 ## 엔티티와 DB
 
@@ -165,7 +166,7 @@ com.tailfriends
 
 - 인증이 필요 없는 경로는 `global/security/SecurityConfig`에만 추가한다. 모든 메서드를 열 때는 `PUBLIC_URLS`, GET만 열 때는 `PUBLIC_GET_URLS`.
 - `/api/v1/admin/**`은 ADMIN 권한이 필요하다.
-- 인증된 요청의 principal은 사용자 ID(`Long`)다. 컨트롤러에서는 `@AuthenticationPrincipal Long userId`로 받는다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
+- 인증된 요청의 principal은 사용자 ID(`Long`)다. 컨트롤러는 사용자 ID를 받지 않고, 서비스가 `global/security/CurrentUser`를 주입받아 `currentUser.id()`로 확인한다(인증 정보가 없으면 `UNAUTHORIZED`). 다른 서비스가 부르는 내부 메서드(예: `ConsentService.isAgreed(userId, type)`)는 `userId`를 파라미터로 받는다. `JwtAuthenticationFilter`가 액세스 토큰의 `sub`(사용자 ID)와 `role`로 인증 정보를 만든다. 권한은 `ROLE_KEEPER`, `ROLE_ADMIN`.
 - 리프레시 토큰은 원문을 저장하지 않고 `RefreshToken.hash()`(SHA-256)로 저장·조회한다.
 - 비밀값은 `application*.yml`에 `${ENV_NAME}`으로만 넣고, 새 환경 변수는 `.env.example`에 추가한다.
 - 테스트 로그인(`POST /api/v1/dev/login`)은 `dev.login.enabled=true`일 때만 생긴다. 로컬 Docker 실행용이며, `application-prod.yml`에서 항상 끈다. 이 설정을 운영에서 켜지 않는다.
@@ -173,7 +174,8 @@ com.tailfriends
 ## 테스트
 
 - 급여일 계산, 건강 경고 판정처럼 규칙이 있는 로직은 단위 테스트를 같이 작성한다.
-- 컨트롤러 테스트는 `@WebMvcTest` + `@WebMvcTestSupport`(보안 설정 포함)로 작성한다. 인증이 필요한 API는 `@WithMockUserId`(principal = 사용자 ID)를 쓴다. `@WithMockUser`는 principal이 사용자 ID가 아니라서 `@AuthenticationPrincipal Long userId`가 null이 된다.
+- 컨트롤러 테스트는 `@WebMvcTest` + `@WebMvcTestSupport`(보안 설정 포함)로 작성한다. 인증이 필요한 API는 `@WithMockUserId`(principal = 사용자 ID)를 쓴다.
+- 서비스 단위 테스트에서 현재 사용자는 `CurrentUserStub.of(1L)`로 넣거나, `@InjectMocks`를 쓰면 `@Mock CurrentUser`를 `@BeforeEach`에서 정한다.
 - 테스트 메서드 이름은 한글로 동작을 설명한다. 예: `안_먹음_기록은_다음_급여일_계산에서_제외한다()`
 - DB가 필요한 테스트는 `IntegrationTestSupport`를 상속한다. Testcontainers로 PostgreSQL을 띄우고 Flyway 마이그레이션을 적용한 상태에서 실행된다. 클래스 이름은 `~IntegrationTest`로 끝낸다.
 - 통합 테스트는 Docker가 없으면 로컬에서 건너뛰고, CI에서는 반드시 실행된다(건너뛰면 CI 실패). 로컬에서 `./gradlew build`가 통과해도 통합 테스트가 건너뛰어졌다면 "확인했다"고 쓰지 않는다.
