@@ -19,6 +19,9 @@ out/
 # OS
 .DS_Store
 
+# 로컬 사진 저장소
+/storage/
+
 # Logs
 *.log
 

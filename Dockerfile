@@ -14,6 +14,8 @@ RUN ./gradlew --no-daemon bootJar -x test
 FROM eclipse-temurin:21-jre
 RUN useradd --system --uid 1001 --no-create-home tailfriends
 WORKDIR /app
+# 사진 저장 폴더. docker compose의 이름 있는 볼륨이 처음 붙을 때 이 소유자를 그대로 가져가 서버가 쓸 수 있다
+RUN mkdir -p /app/storage && chown tailfriends /app/storage
 COPY --from=build /workspace/build/libs/*.jar app.jar
 USER tailfriends
 EXPOSE 8080

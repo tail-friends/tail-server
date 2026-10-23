@@ -10,6 +10,7 @@ public enum ErrorCode {
 
     // 400
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않아요"),
+    INVALID_FILE(HttpStatus.BAD_REQUEST, "JPG·PNG 사진만 20MB까지 올릴 수 있어요"),
 
     // 401
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요해요"),

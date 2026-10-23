@@ -10,3 +10,8 @@ jwt:
 
 cors:
   allowed-origins: http://localhost:3000
+
+# 테스트에서 올린 사진은 build 폴더에 둔다. (./gradlew clean으로 지워짐)
+storage:
+  local-path: build/test-storage
+  public-url: http://localhost/files

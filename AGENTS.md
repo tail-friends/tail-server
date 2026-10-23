@@ -157,6 +157,8 @@ com.tailfriends
 - 위치: `src/main/resources/db/migration`
 - 파일 이름: `V{yyyyMMddHHmm}__{설명}.sql` (예: `V202610201530__create_animals.sql`)
 - 이미 머지된 마이그레이션 파일은 절대 고치지 않는다. 바꿀 내용은 새 파일로 추가한다.
+- 새 마이그레이션 버전은 대상 브랜치의 마지막 버전보다 커야 한다. 이미 마이그레이션을 적용한 DB는 낮은 버전이 끼어들면 서버가 뜨지 않는다. PR이 오래 열려 있는 동안 다른 마이그레이션이 먼저 머지되면, 아직 머지되지 않은 쪽의 파일 이름 시각을 바꾼다.
+- PR CI의 `Check migrations` 단계(`.github/scripts/check-migrations.sh`)가 이 두 가지를 검사한다.
 - 엔티티를 추가·변경하면 같은 PR에 마이그레이션도 넣는다.
 
 ## 보안

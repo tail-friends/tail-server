@@ -57,6 +57,18 @@ class ConsentServiceTest {
     }
 
     @Test
+    void 동의_여부는_가장_최근_행을_보고_답한_적_없으면_false() {
+        given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of(
+                Consent.of(user, ConsentType.KEEP_ORIGINAL, false),
+                Consent.of(user, ConsentType.KEEP_ORIGINAL, true),
+                Consent.of(user, ConsentType.PRIVACY, true)));
+
+        assertThat(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).isFalse();
+        assertThat(consentService.isAgreed(1L, ConsentType.PRIVACY)).isTrue();
+        assertThat(consentService.isAgreed(1L, ConsentType.NOTIFICATION)).isFalse();
+    }
+
+    @Test
     void 처음_저장하면_네_항목을_모두_남긴다() {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(consentRepository.findAllByUserIdOrderByIdDesc(1L)).willReturn(List.of());

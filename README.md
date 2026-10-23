@@ -51,8 +51,8 @@ docker compose --profile app up -d --build  # 서버 + DB 실행 (처음엔 빌�
 
 - Swagger UI: http://localhost:8080/swagger-ui
 - 최신 코드로 다시 띄우기: `git pull` 후 같은 명령을 다시 실행
-- 끄기: `docker compose --profile app down` (DB 데이터는 남음)
-- DB까지 처음부터: `docker compose --profile app down -v`
+- 끄기: `docker compose --profile app down` (DB 데이터와 올린 사진은 남음)
+- DB와 사진까지 처음부터: `docker compose --profile app down -v`
 - 서버 로그 보기: `docker compose --profile app logs -f app`
 
 ### 토큰 받기 (테스트 로그인)

@@ -23,6 +23,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Check migrations
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
+          .github/scripts/check-migrations.sh "origin/$BASE_REF"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v6
         with:
@@ -49,6 +57,18 @@ jobs:
         with:
           name: test-report
           path: build/reports/tests/test
+
+      - name: Notify Discord on failure
+        if: failure() && github.event_name == 'push'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_MAP: ${{ vars.DISCORD_USER_MAP }}
+          CI_BRANCH: ${{ github.ref_name }}
+          CI_ACTOR: ${{ github.actor }}
+          CI_COMMIT_SHA: ${{ github.sha }}
+          CI_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          CI_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/discord-notify.sh ci-failed
 
   # 앱·웹 팀이 쓰는 로컬 실행 환경(docker compose --profile app)이 실제로 뜨는지 확인한다
   docker:
@@ -86,6 +106,19 @@ jobs:
           curl -fsS -X POST http://localhost:8080/api/v1/dev/sample-data -H "Authorization: Bearer $token"
           count=$(curl -fsS http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token" | jq '.data.animals | length')
           test "$count" -eq 3
+
+      # 컨테이너 안의 서버 사용자가 사진 볼륨에 쓸 수 있는지 확인한다
+      - name: Upload a photo
+        run: |
+          token=$(curl -fsS -X POST http://localhost:8080/api/v1/dev/login \
+            -H 'Content-Type: application/json' -d '{"name":"ci-photo"}' | jq -r '.data.accessToken')
+          animal_id=$(curl -fsS -X POST http://localhost:8080/api/v1/animals -H "Authorization: Bearer $token" \
+            -H 'Content-Type: application/json' -d '{"name":"ci","speciesId":1,"feedIntervalDays":4}' | jq -r '.data.id')
+          echo 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGN4sNgKjhiQOQC6Eg3p4y4phwAAAABJRU5ErkJggg==' \
+            | base64 -d > photo.png
+          thumbnail_url=$(curl -fsS -X POST http://localhost:8080/api/v1/photos -H "Authorization: Bearer $token" \
+            -F 'file=@photo.png;type=image/png' -F "animalId=$animal_id" -F purpose=ALBUM | jq -r '.data.thumbnailUrl')
+          curl -fsS -o /dev/null "$thumbnail_url"
 
       - name: Show server logs
         if: failure()

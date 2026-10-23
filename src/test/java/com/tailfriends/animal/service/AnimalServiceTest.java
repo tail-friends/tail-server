@@ -19,6 +19,7 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
 import com.tailfriends.species.domain.Species;
@@ -45,9 +46,11 @@ class AnimalServiceTest {
     private final SpeciesRepository speciesRepository = mock(SpeciesRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
+    private final PhotoFileRemover photoFileRemover = mock(PhotoFileRemover.class);
     private final AnimalService animalService = new AnimalService(animalRepository, speciesRepository, userRepository,
             new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
-            new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK);
+            new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK,
+            photoFileRemover);
 
     @Test
     void 종_ID로_등록하면_종_이름을_종_목록에서_가져온다() {
@@ -140,13 +143,14 @@ class AnimalServiceTest {
     }
 
     @Test
-    void 삭제는_내_개체만_지운다() {
+    void 삭제는_내_개체만_지우고_사진_파일도_지운다() {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
         animalService.delete(USER_ID, 12L);
 
         verify(animalRepository).delete(animal);
+        verify(photoFileRemover).removeFilesOfAnimalAfterCommit(12L);
     }
 
     private Animal captureSaved() {
