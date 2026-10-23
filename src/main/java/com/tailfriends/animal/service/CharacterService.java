@@ -9,15 +9,16 @@ import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class CharacterService {
 
+    private final CurrentUser currentUser;
     private final AnimalRepository animalRepository;
     private final AnimalCharacterRepository characterRepository;
 
@@ -25,7 +26,8 @@ public class CharacterService {
      * 캐릭터가 없으면 만들고, 있으면 값 전체를 바꾼다.
      */
     @Transactional
-    public CharacterResponse save(Long userId, Long animalId, CharacterSaveRequest request) {
+    public CharacterResponse save(Long animalId, CharacterSaveRequest request) {
+        Long userId = currentUser.id();
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
         if (request.photoId() != null) {

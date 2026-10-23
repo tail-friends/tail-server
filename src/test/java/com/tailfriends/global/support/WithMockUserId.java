@@ -8,7 +8,7 @@ import org.springframework.security.test.context.support.WithSecurityContext;
 
 /**
  * JwtAuthenticationFilter와 같은 모양(principal = 사용자 ID)의 인증 정보로 테스트한다.
- * 컨트롤러가 {@code @AuthenticationPrincipal Long userId}를 쓰면 {@code @WithMockUser} 대신 이것을 쓴다.
+ * 인증이 필요한 API의 컨트롤러 테스트에 {@code @WithMockUser} 대신 이것을 쓴다. 서비스의 CurrentUser가 이 ID를 꺼낸다.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

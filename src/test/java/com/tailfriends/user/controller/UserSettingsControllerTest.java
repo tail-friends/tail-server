@@ -39,7 +39,7 @@ class UserSettingsControllerTest {
     @Test
     @WithMockUserId(1L)
     void 설정을_명세_형식으로_돌려준다() throws Exception {
-        given(userSettingsService.getSettings(1L)).willReturn(SETTINGS);
+        given(userSettingsService.getSettings()).willReturn(SETTINGS);
 
         mockMvc.perform(get("/api/v1/users/me/settings"))
                 .andExpect(status().isOk())
@@ -56,7 +56,7 @@ class UserSettingsControllerTest {
     @Test
     @WithMockUserId(1L)
     void 보낸_필드만_바꾼다() throws Exception {
-        given(userSettingsService.updateSettings(eq(1L), eq(new SettingsUpdateRequest(
+        given(userSettingsService.updateSettings(eq(new SettingsUpdateRequest(
                 LocalTime.of(8, 30), TempUnit.F, null, new AlertRulesUpdate(5, null, null, null), null))))
                 .willReturn(SETTINGS);
 

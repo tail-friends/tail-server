@@ -32,7 +32,7 @@ class WeightControllerTest {
     @Test
     @WithMockUserId(7L)
     void 기간을_YYYY_MM_DD로_받아_명세_형식으로_돌려준다() throws Exception {
-        given(weightService.getWeights(7L, 12L, LocalDate.of(2025, 10, 18), LocalDate.of(2026, 10, 18)))
+        given(weightService.getWeights(12L, LocalDate.of(2025, 10, 18), LocalDate.of(2026, 10, 18)))
                 .willReturn(new WeightGraphResponse(List.of(
                         new WeightPoint(LocalDate.of(2026, 7, 5), new BigDecimal("48.0")),
                         new WeightPoint(LocalDate.of(2026, 10, 3), new BigDecimal("57.8")))));

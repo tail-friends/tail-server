@@ -10,12 +10,14 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.service.ConsentService;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,8 +36,16 @@ class OriginalPhotoServiceTest {
     @Mock
     private ConsentService consentService;
 
+    @Mock(strictness = Mock.Strictness.LENIENT)
+    private CurrentUser currentUser;
+
     @InjectMocks
     private OriginalPhotoService originalPhotoService;
+
+    @BeforeEach
+    void 현재_사용자() {
+        given(currentUser.id()).willReturn(1L);
+    }
 
     @Test
     void 원본을_지우고_썸네일은_남기고_보관_동의를_철회한다() {
@@ -43,7 +53,7 @@ class OriginalPhotoServiceTest {
         Photo second = photo("photos/b_original.jpg");
         given(photoRepository.findAllByUserIdAndOriginalKeyNotNull(1L)).willReturn(List.of(first, second));
 
-        int deleted = originalPhotoService.deleteAll(1L).deletedCount();
+        int deleted = originalPhotoService.deleteAll().deletedCount();
 
         assertThat(deleted).isEqualTo(2);
         assertThat(first.getOriginalKey()).isNull();
@@ -56,7 +66,7 @@ class OriginalPhotoServiceTest {
     void 보관한_원본이_없어도_동의는_철회하고_0을_돌려준다() {
         given(photoRepository.findAllByUserIdAndOriginalKeyNotNull(1L)).willReturn(List.of());
 
-        assertThat(originalPhotoService.deleteAll(1L).deletedCount()).isZero();
+        assertThat(originalPhotoService.deleteAll().deletedCount()).isZero();
         verify(consentService).changeOptional(1L, ConsentType.KEEP_ORIGINAL, false);
     }
 
@@ -65,7 +75,7 @@ class OriginalPhotoServiceTest {
         willThrow(new BusinessException(ErrorCode.UNAUTHORIZED))
                 .given(consentService).changeOptional(1L, ConsentType.KEEP_ORIGINAL, false);
 
-        assertThatThrownBy(() -> originalPhotoService.deleteAll(1L))
+        assertThatThrownBy(() -> originalPhotoService.deleteAll())
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
         verify(photoFileRemover, never()).removeAfterCommit(any());

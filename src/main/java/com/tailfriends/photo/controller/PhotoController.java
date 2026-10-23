@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,12 +32,11 @@ public class PhotoController {
     @PostMapping(value = "/api/v1/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PhotoUploadResponse> upload(
-            @AuthenticationPrincipal Long userId,
             @RequestPart MultipartFile file,
             @RequestParam Long animalId,
             @RequestParam PhotoPurpose purpose,
             @RequestParam(defaultValue = "false") boolean keepOriginal) {
-        return ApiResponse.success(photoService.upload(userId, animalId, purpose, keepOriginal, file));
+        return ApiResponse.success(photoService.upload(animalId, purpose, keepOriginal, file));
     }
 
     @Operation(summary = "캐릭터 분석 (AI)",
@@ -46,7 +44,7 @@ public class PhotoController {
                     + "실패하면 앱은 기기에서 뽑은 색으로 진행한다.")
     @PostMapping("/api/v1/photos/{photoId}/character-analysis")
     public ApiResponse<CharacterAnalysisResponse> analyzeCharacter(
-            @AuthenticationPrincipal Long userId, @PathVariable Long photoId) {
-        return ApiResponse.success(characterAnalysisService.analyze(userId, photoId));
+            @PathVariable Long photoId) {
+        return ApiResponse.success(characterAnalysisService.analyze(photoId));
     }
 }

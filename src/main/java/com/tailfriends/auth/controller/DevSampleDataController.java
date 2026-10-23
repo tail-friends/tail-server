@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,7 +28,7 @@ public class DevSampleDataController {
                     + "최근 60일 기록을 만든다. 부를 때마다 새로 추가된다. 운영에는 없다.")
     @PostMapping("/api/v1/dev/sample-data")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<SampleDataResponse> create(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.success(devSampleDataService.create(userId));
+    public ApiResponse<SampleDataResponse> create() {
+        return ApiResponse.success(devSampleDataService.create());
     }
 }

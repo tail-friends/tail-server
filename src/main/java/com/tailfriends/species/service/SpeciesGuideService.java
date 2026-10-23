@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SpeciesGuideService {
 
     private final SpeciesRepository speciesRepository;
@@ -25,6 +24,7 @@ public class SpeciesGuideService {
      * 숨긴 종도 이미 등록된 개체가 있을 수 있어 가이드를 보여준다.
      * section을 주면 그 섹션만 담는다. 작성된 섹션이 없으면 sections는 빈 목록이다.
      */
+    @Transactional(readOnly = true)
     public SpeciesGuideResponse getGuide(Long speciesId, GuideSection section) {
         Species species = speciesRepository.findById(speciesId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SPECIES_NOT_FOUND));

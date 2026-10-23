@@ -4,6 +4,7 @@ import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
@@ -25,13 +26,13 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class PhotoService {
 
     static final int THUMBNAIL_SIZE = 128;
     static final int ORIGINAL_SIZE = 1600;
     static final int ANALYSIS_SIZE = 1024;
 
+    private final CurrentUser currentUser;
     private final PhotoRepository photoRepository;
     private final AnimalRepository animalRepository;
     private final UserRepository userRepository;
@@ -45,8 +46,9 @@ public class PhotoService {
      * 원본을 보관하지 않는 캐릭터 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
      */
     @Transactional
-    public PhotoUploadResponse upload(Long userId, Long animalId, PhotoPurpose purpose, boolean keepOriginal,
+    public PhotoUploadResponse upload(Long animalId, PhotoPurpose purpose, boolean keepOriginal,
                                       MultipartFile file) {
+        Long userId = currentUser.id();
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
         boolean keep = keepOriginal && consentService.isAgreed(userId, ConsentType.KEEP_ORIGINAL);
