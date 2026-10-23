@@ -26,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class PhotoService {
 
     static final int THUMBNAIL_SIZE = 128;

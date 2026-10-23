@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AdminStatsService {
 
     private final AdminStatsRepository statsRepository;
@@ -27,6 +26,7 @@ public class AdminStatsService {
     /**
      * 오늘(KST)을 포함한 최근 days일.
      */
+    @Transactional(readOnly = true)
     public AdminStatsResponse getStats(int days) {
         LocalDate today = KstDate.today(clock);
         LocalDate firstDay = today.minusDays(days - 1L);

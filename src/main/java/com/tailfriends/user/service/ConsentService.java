@@ -19,13 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ConsentService {
 
     private final CurrentUser currentUser;
     private final UserRepository userRepository;
     private final ConsentRepository consentRepository;
 
+    @Transactional(readOnly = true)
     public ConsentResponse getConsents() {
         Long userId = currentUser.id();
         findUser(userId);
@@ -35,6 +35,7 @@ public class ConsentService {
     /**
      * 항목에 지금 동의한 상태인지. 답한 적 없으면 false.
      */
+    @Transactional(readOnly = true)
     public boolean isAgreed(Long userId, ConsentType type) {
         return Boolean.TRUE.equals(currentOf(userId).get(type));
     }

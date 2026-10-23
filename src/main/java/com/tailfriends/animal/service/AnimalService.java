@@ -28,7 +28,6 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AnimalService {
 
     private final CurrentUser currentUser;
@@ -68,6 +67,7 @@ public class AnimalService {
         return new AnimalCreateResponse(animal.getId());
     }
 
+    @Transactional(readOnly = true)
     public AnimalListResponse getAnimals() {
         Long userId = currentUser.id();
         List<Animal> animals = animalRepository.findAllByUserIdOrderByIdAsc(userId);
@@ -77,6 +77,7 @@ public class AnimalService {
                 .toList());
     }
 
+    @Transactional(readOnly = true)
     public AnimalResponse getAnimal(Long animalId) {
         Long userId = currentUser.id();
         Animal animal = findAnimal(userId, animalId);

@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class WeightService {
 
     private final CurrentUser currentUser;
@@ -26,6 +25,7 @@ public class WeightService {
     /**
      * to가 없으면 오늘(KST), from이 없으면 to의 1년 전. 둘 다 포함한다.
      */
+    @Transactional(readOnly = true)
     public WeightGraphResponse getWeights(Long animalId, LocalDate from, LocalDate to) {
         Long userId = currentUser.id();
         animalRepository.findByIdAndUserId(animalId, userId)

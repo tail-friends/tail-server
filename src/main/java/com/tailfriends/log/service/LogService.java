@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class LogService {
 
     private final CurrentUser currentUser;
@@ -69,6 +68,7 @@ public class LogService {
     /**
      * 기록일 최신순. cursor는 이전 페이지의 마지막 기록 ID다.
      */
+    @Transactional(readOnly = true)
     public LogListResponse getLogs(Long animalId, LogType type, Long cursor, int size) {
         Long userId = currentUser.id();
         findAnimal(userId, animalId);

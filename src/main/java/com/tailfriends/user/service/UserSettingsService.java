@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class UserSettingsService {
 
     private final CurrentUser currentUser;
@@ -31,6 +30,7 @@ public class UserSettingsService {
     /**
      * 설정을 바꾼 적이 없으면 기본값. 저장하지 않는다.
      */
+    @Transactional(readOnly = true)
     public SettingsResponse getSettings() {
         Long userId = currentUser.id();
         User user = findUser(userId);

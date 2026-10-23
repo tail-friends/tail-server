@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class UserService {
 
     private final CurrentUser currentUser;
@@ -25,6 +24,7 @@ public class UserService {
     /**
      * 토큰은 유효하지만 사용자가 없으면(탈퇴 등) 다시 로그인하도록 UNAUTHORIZED.
      */
+    @Transactional(readOnly = true)
     public MeResponse getMe() {
         Long userId = currentUser.id();
         User user = userRepository.findById(userId)
