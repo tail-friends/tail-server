@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -25,14 +24,14 @@ public class UserController {
 
     @Operation(summary = "현재 로그인한 사용자 조회", description = "사용자 정보와 포인트 잔액, 개체 수.")
     @GetMapping("/api/v1/auth/me")
-    public ApiResponse<MeResponse> getMe(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.success(userService.getMe(userId));
+    public ApiResponse<MeResponse> getMe() {
+        return ApiResponse.success(userService.getMe());
     }
 
     @Operation(summary = "회원 탈퇴", description = "계정과 개체, 기록을 모두 즉시 삭제한다. 본문 없이 204.")
     @DeleteMapping("/api/v1/auth/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void withdraw(@AuthenticationPrincipal Long userId) {
-        userService.withdraw(userId);
+    public void withdraw() {
+        userService.withdraw();
     }
 }

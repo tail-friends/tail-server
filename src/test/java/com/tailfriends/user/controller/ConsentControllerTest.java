@@ -32,7 +32,7 @@ class ConsentControllerTest {
     @Test
     @WithMockUserId(1L)
     void 동의_상태를_명세_형식으로_돌려준다() throws Exception {
-        given(consentService.getConsents(1L)).willReturn(new ConsentResponse(true, true, false, true));
+        given(consentService.getConsents()).willReturn(new ConsentResponse(true, true, false, true));
 
         mockMvc.perform(get("/api/v1/auth/consents"))
                 .andExpect(status().isOk())
@@ -45,7 +45,7 @@ class ConsentControllerTest {
     @Test
     @WithMockUserId(1L)
     void 동의를_저장한다() throws Exception {
-        given(consentService.saveConsents(eq(1L), eq(new ConsentRequest(true, true, false, false))))
+        given(consentService.saveConsents(eq(new ConsentRequest(true, true, false, false))))
                 .willReturn(new ConsentResponse(true, true, false, false));
 
         mockMvc.perform(put("/api/v1/auth/consents").contentType(MediaType.APPLICATION_JSON)
