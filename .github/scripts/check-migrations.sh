@@ -15,7 +15,8 @@ version_of() {
   sed -n 's/^V\([0-9][0-9]*\)__.*\.sql$/\1/p' <<< "$1"
 }
 
-base_files=$(git ls-tree --name-only "$base_ref" "$dir/" | xargs -n1 basename | sort)
+# 대상 브랜치에 마이그레이션이 하나도 없을 수 있다(예: 첫 릴리즈 전 main). 빈 입력에서도 실패하지 않게 sed로 파일 이름만 남긴다
+base_files=$(git ls-tree --name-only "$base_ref" "$dir/" | sed 's#.*/##' | sort)
 head_files=$(ls "$dir" | sort)
 latest=$(for f in $base_files; do version_of "$f"; done | sort -n | tail -1)
 
