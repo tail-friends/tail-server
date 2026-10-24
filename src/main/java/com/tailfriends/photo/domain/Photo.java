@@ -53,16 +53,34 @@ public class Photo extends BaseTimeEntity {
      */
     private String originalKey;
 
+    /**
+     * 원본을 보관하지 않는 캐릭터 사진의 분석용 임시 사본. 하루가 지나면 지운다.
+     */
+    private String analysisKey;
+
     @Column(precision = 7, scale = 1)
     private BigDecimal weightAtTime;
 
     @Builder
-    private Photo(User user, Animal animal, PhotoPurpose purpose, String thumbnailKey, String originalKey) {
+    private Photo(User user, Animal animal, PhotoPurpose purpose, String thumbnailKey, String originalKey,
+                  String analysisKey) {
         this.user = user;
         this.animal = animal;
         this.purpose = purpose;
         this.thumbnailKey = thumbnailKey;
         this.originalKey = originalKey;
+        this.analysisKey = analysisKey;
+    }
+
+    /**
+     * AI 분석에 쓸 사진. 보관한 원본이 있으면 원본, 없으면 임시 사본. 둘 다 없으면 null.
+     */
+    public String analysisSourceKey() {
+        return originalKey != null ? originalKey : analysisKey;
+    }
+
+    public void clearAnalysisKey() {
+        this.analysisKey = null;
     }
 
     /**

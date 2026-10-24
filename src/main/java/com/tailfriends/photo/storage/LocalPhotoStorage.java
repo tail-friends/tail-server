@@ -32,6 +32,15 @@ public class LocalPhotoStorage implements PhotoStorage {
     }
 
     @Override
+    public byte[] read(String key) {
+        try {
+            return Files.readAllBytes(resolve(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException("사진을 읽지 못했어요: " + key, e);
+        }
+    }
+
+    @Override
     public void delete(String key) {
         try {
             Files.deleteIfExists(resolve(key));
