@@ -32,14 +32,16 @@ class AdminStatsControllerTest {
     @WithMockUserId(role = "ADMIN")
     void 기본은_최근_7일() throws Exception {
         given(adminStatsService.getStats(7)).willReturn(new AdminStatsResponse(120, 340,
-                List.of(new Daily(LocalDate.of(2026, 10, 20), 1, 2, 0, 0))));
+                List.of(new Daily(LocalDate.of(2026, 10, 20), 1, 2, 10, 1))));
 
         mockMvc.perform(get("/api/v1/admin/stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalUsers").value(120))
                 .andExpect(jsonPath("$.data.totalAnimals").value(340))
                 .andExpect(jsonPath("$.data.daily[0].date").value("2026-10-20"))
-                .andExpect(jsonPath("$.data.daily[0].newAnimals").value(2));
+                .andExpect(jsonPath("$.data.daily[0].newAnimals").value(2))
+                .andExpect(jsonPath("$.data.daily[0].aiAnalyses").value(10))
+                .andExpect(jsonPath("$.data.daily[0].aiFailures").value(1));
     }
 
     @Test
