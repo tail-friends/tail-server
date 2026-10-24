@@ -37,9 +37,9 @@ class AdminStatsServiceTest {
         assertThat(response.totalUsers()).isEqualTo(120);
         assertThat(response.totalAnimals()).isEqualTo(340);
         assertThat(response.daily()).containsExactly(
-                new Daily(LocalDate.of(2026, 10, 18), 3, 0),
-                new Daily(LocalDate.of(2026, 10, 19), 0, 5),
-                new Daily(LocalDate.of(2026, 10, 20), 1, 0));
+                new Daily(LocalDate.of(2026, 10, 18), 3, 0, 0, 0),
+                new Daily(LocalDate.of(2026, 10, 19), 0, 5, 0, 0),
+                new Daily(LocalDate.of(2026, 10, 20), 1, 0, 0, 0));
     }
 
     private static DailyCount count(String day, long count) {
