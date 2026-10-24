@@ -12,16 +12,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.tailfriends.animal.domain.FeedStatus;
+import com.tailfriends.animal.domain.Mood;
 import com.tailfriends.animal.domain.Sex;
+import com.tailfriends.animal.domain.ShedSummary;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
+import com.tailfriends.animal.dto.CharacterResponse;
+import com.tailfriends.animal.dto.CharacterSummaryResponse;
 import com.tailfriends.animal.dto.FeedResponse;
+import com.tailfriends.animal.dto.WeightSummaryResponse;
 import com.tailfriends.animal.service.AnimalService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
+import com.tailfriends.health.domain.AlertStatus;
+import com.tailfriends.health.domain.AlertType;
+import com.tailfriends.health.dto.AlertResponse;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -78,7 +89,14 @@ class AnimalControllerTest {
     void 개체_상세를_명세_형식으로_돌려준다() throws Exception {
         given(animalService.getAnimal(12L)).willReturn(new AnimalResponse(
                 12L, "망고", "레오파드 게코", "탠저린", Sex.FEMALE, LocalDate.of(2025, 6, 20), 4, "핫존 32℃",
-                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1)));
+                new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 18), 1),
+                new ShedSummary(LocalDate.of(2026, 9, 22), false, 32, LocalDate.of(2026, 10, 24), false),
+                new WeightSummaryResponse(new BigDecimal("57.8"), new BigDecimal("2.8")),
+                new CharacterSummaryResponse("gecko", "spots",
+                        new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert"),
+                List.of(new AlertResponse(77L, 12L, AlertType.WEIGHT_LOSS_ALERT, "최근 30일 동안 체중이 12% 줄었어요",
+                        AlertStatus.OPEN, Instant.parse("2026-10-18T09:00:00Z"))),
+                Mood.UNWELL));
 
         mockMvc.perform(get("/api/v1/animals/12"))
                 .andExpect(status().isOk())
@@ -89,7 +107,20 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.feedIntervalDays").value(4))
                 .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
                 .andExpect(jsonPath("$.data.feed.lastDate").value("2026-10-14"))
-                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"));
+                .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"))
+                .andExpect(jsonPath("$.data.alerts[0].type").value("WEIGHT_LOSS_ALERT"))
+                .andExpect(jsonPath("$.data.alerts[0].createdAt").value("2026-10-18T09:00:00Z"))
+                .andExpect(jsonPath("$.data.shed.lastDate").value("2026-09-22"))
+                .andExpect(jsonPath("$.data.shed.complete").value(false))
+                .andExpect(jsonPath("$.data.shed.avgIntervalDays").value(32))
+                .andExpect(jsonPath("$.data.shed.predictedDate").value("2026-10-24"))
+                .andExpect(jsonPath("$.data.shed.inBluePhase").value(false))
+                .andExpect(jsonPath("$.data.weight.latest").value(57.8))
+                .andExpect(jsonPath("$.data.weight.diff").value(2.8))
+                .andExpect(jsonPath("$.data.character.shape").value("gecko"))
+                .andExpect(jsonPath("$.data.character.colors.body").value("#E0A33A"))
+                .andExpect(jsonPath("$.data.character.home").value("desert"))
+                .andExpect(jsonPath("$.data.mood").value("UNWELL"));
     }
 
     @Test

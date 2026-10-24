@@ -25,6 +25,7 @@ public enum ErrorCode {
     ANIMAL_NOT_FOUND(HttpStatus.NOT_FOUND, "개체를 찾을 수 없어요"),
     SPECIES_NOT_FOUND(HttpStatus.NOT_FOUND, "종을 찾을 수 없어요"),
     LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "기록을 찾을 수 없어요"),
+    ALERT_NOT_FOUND(HttpStatus.NOT_FOUND, "경고를 찾을 수 없어요"),
     PHOTO_NOT_FOUND(HttpStatus.NOT_FOUND, "사진을 찾을 수 없어요"),
 
     // 405

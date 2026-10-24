@@ -4,6 +4,7 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.user.domain.ConsentType;
+import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.domain.UserSettings;
 import com.tailfriends.user.dto.ConsentResponse;
@@ -37,6 +38,16 @@ public class UserSettingsService {
         UserSettings settings = userSettingsRepository.findById(userId)
                 .orElseGet(() -> UserSettings.defaultsFor(user));
         return toResponse(userId, settings);
+    }
+
+    /**
+     * 건강 경고 판정 기준. 설정을 바꾼 적이 없으면 기본값.
+     */
+    @Transactional(readOnly = true)
+    public AlertRules alertRulesOf(Long userId) {
+        return userSettingsRepository.findById(userId)
+                .map(UserSettings::alertRules)
+                .orElse(AlertRules.DEFAULT);
     }
 
     @Transactional

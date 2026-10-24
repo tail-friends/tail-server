@@ -13,10 +13,12 @@ import com.tailfriends.animal.domain.Sex;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
+import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
+import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.species.domain.Home;
@@ -46,8 +48,10 @@ class AnimalServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
     private final PhotoFileRemover photoFileRemover = mock(PhotoFileRemover.class);
-    private final AnimalService animalService = new AnimalService(CurrentUserStub.of(USER_ID), animalRepository, speciesRepository, userRepository,
-            new FeedService(logRepository, CLOCK), CLOCK, photoFileRemover);
+    private final AnimalService animalService = new AnimalService(CurrentUserStub.of(USER_ID), animalRepository,
+            speciesRepository, userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
+            new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK,
+            photoFileRemover);
 
     @Test
     void 종_ID로_등록하면_종_이름을_종_목록에서_가져온다() {

@@ -41,7 +41,10 @@ public record FeedSchedule(
         return new FeedSchedule(status, lastFedDate, nextDate, daysLeft);
     }
 
-    private static boolean isCooling(LocalDate coolingStart, LocalDate coolingEnd, LocalDate today) {
+    /**
+     * 쿨링 기간인지. coolingEnd가 없으면 시작일부터 계속 쿨링이다.
+     */
+    public static boolean isCooling(LocalDate coolingStart, LocalDate coolingEnd, LocalDate today) {
         return coolingStart != null
                 && !today.isBefore(coolingStart)
                 && (coolingEnd == null || !today.isAfter(coolingEnd));

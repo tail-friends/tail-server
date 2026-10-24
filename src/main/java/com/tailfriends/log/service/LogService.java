@@ -8,6 +8,8 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.health.dto.AlertResponse;
+import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogCreateRequest;
@@ -37,6 +39,7 @@ public class LogService {
     private final AnimalRepository animalRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final HealthAlertService healthAlertService;
     private final Clock clock;
 
     /**
@@ -62,7 +65,8 @@ public class LogService {
                 request.date(),
                 request.memo(),
                 request.toDetails()));
-        return new LogCreateResponse(log.getId(), FeedResponse.from(feedService.scheduleOf(animal)));
+        List<AlertResponse> newAlerts = healthAlertService.evaluate(animal, log.getType());
+        return new LogCreateResponse(log.getId(), newAlerts, FeedResponse.from(feedService.scheduleOf(animal)));
     }
 
     /**
@@ -97,6 +101,7 @@ public class LogService {
         Log log = findLog(userId, logId);
         validateDate(request.date());
         log.update(request.date(), request.memo(), request.toDetails());
+        healthAlertService.evaluate(log.getAnimal(), log.getType());
         return LogResponse.from(log);
     }
 
