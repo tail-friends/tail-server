@@ -1,5 +1,6 @@
 package com.tailfriends.admin.integration;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -76,6 +77,40 @@ class AdminSpeciesIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.data.shape").value("gecko"))
                 .andExpect(jsonPath("$.data.envRange.humidity.min").value(60))
                 .andExpect(jsonPath("$.data.hidden").value(false));
+    }
+
+    @Test
+    void 검색용_이름과_노출_순서를_저장하고_노출_순서대로_목록에_나온다() throws Exception {
+        String admin = adminToken();
+        String name = "토케이 게코 " + System.nanoTime();
+        String body = mockMvc.perform(post("/api/v1/admin/species").header(HttpHeaders.AUTHORIZATION, admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "%s", "shape": "GECKO", "feedIntervalDays": 5, "defaultHome": "FOREST",
+                                  "category": "reptile", "englishName": " Tokay gecko ", "scientificName": "Gekko gecko",
+                                  "aliases": ["토케이", " 토케이 "], "displayOrder": 15 }
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.category").value("reptile"))
+                .andExpect(jsonPath("$.data.englishName").value("Tokay gecko"))
+                .andExpect(jsonPath("$.data.aliases", contains("토케이")))
+                .andExpect(jsonPath("$.data.displayOrder").value(15))
+                .andReturn().getResponse().getContentAsString();
+        Integer id = JsonPath.read(body, "$.data.id");
+        createdIds.add(id.longValue());
+
+        // 레오파드 게코(10)와 크레스티드 게코(20) 사이
+        mockMvc.perform(get("/api/v1/species"))
+                .andExpect(jsonPath("$.data.species[1].id").value(id))
+                .andExpect(jsonPath("$.data.species[1].scientificName").value("Gekko gecko"))
+                .andExpect(jsonPath("$.data.species[1].displayOrder").doesNotExist());
+
+        mockMvc.perform(patch("/api/v1/admin/species/" + id).header(HttpHeaders.AUTHORIZATION, admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"aliases\": [\"게코 게코\"] }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.aliases", contains("게코 게코")))
+                .andExpect(jsonPath("$.data.englishName").value("Tokay gecko"));
     }
 
     @Test

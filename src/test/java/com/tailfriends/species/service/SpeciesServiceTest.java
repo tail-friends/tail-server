@@ -44,6 +44,27 @@ class SpeciesServiceTest {
     }
 
     @Test
+    void 분류는_소문자로_검색용_이름은_그대로_응답한다() {
+        given(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc()).willReturn(List.of(
+                Species.builder()
+                        .name("볼 파이톤")
+                        .shape(Shape.SNAKE)
+                        .feedIntervalDays(10)
+                        .defaultHome(Home.ROCK)
+                        .englishName("Ball python")
+                        .scientificName("Python regius")
+                        .aliases(List.of("볼파이선", "로열 파이톤"))
+                        .build()));
+
+        SpeciesResponse response = speciesService.getSpeciesList().species().get(0);
+
+        assertThat(response.category()).isEqualTo("reptile");
+        assertThat(response.englishName()).isEqualTo("Ball python");
+        assertThat(response.scientificName()).isEqualTo("Python regius");
+        assertThat(response.aliases()).containsExactly("볼파이선", "로열 파이톤");
+    }
+
+    @Test
     void 온습도_값이_없으면_범위를_null로_응답한다() {
         given(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc()).willReturn(List.of(
                 Species.builder()

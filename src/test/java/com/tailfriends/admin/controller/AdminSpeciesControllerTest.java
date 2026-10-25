@@ -80,6 +80,30 @@ class AdminSpeciesControllerTest {
 
     @Test
     @WithMockUserId(role = "ADMIN")
+    void 별칭이_10개를_넘으면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "토케이 게코", "shape": "GECKO", "feedIntervalDays": 5, "defaultHome": "FOREST",
+                                  "aliases": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    @WithMockUserId(role = "ADMIN")
+    void 아직_없는_분류면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "타란툴라", "shape": "GECKO", "feedIntervalDays": 7, "defaultHome": "FOREST",
+                                  "category": "ARACHNID" }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    @WithMockUserId(role = "ADMIN")
     void 종을_숨기면_본문_없이_204() throws Exception {
         mockMvc.perform(delete("/api/v1/admin/species/3"))
                 .andExpect(status().isNoContent());

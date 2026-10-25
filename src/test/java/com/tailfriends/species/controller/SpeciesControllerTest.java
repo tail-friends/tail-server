@@ -32,7 +32,7 @@ class SpeciesControllerTest {
         given(speciesService.getSpeciesList()).willReturn(new SpeciesListResponse(List.of(
                 new SpeciesResponse(1L, "레오파드 게코", "gecko", false, 4, null,
                         new SpeciesResponse.EnvRange(null, null, null), "desert", "reptile",
-                        null, null, List.of()))));
+                        "Leopard gecko", "Eublepharis macularius", List.of("레오")))));
 
         mockMvc.perform(get("/api/v1/species"))
                 .andExpect(status().isOk())
@@ -43,7 +43,12 @@ class SpeciesControllerTest {
                 .andExpect(jsonPath("$.data.species[0].feedIntervalDays").value(4))
                 .andExpect(jsonPath("$.data.species[0].shedIntervalDays").isEmpty())
                 .andExpect(jsonPath("$.data.species[0].envRange.hot").isEmpty())
-                .andExpect(jsonPath("$.data.species[0].defaultHome").value("desert"));
+                .andExpect(jsonPath("$.data.species[0].defaultHome").value("desert"))
+                .andExpect(jsonPath("$.data.species[0].category").value("reptile"))
+                .andExpect(jsonPath("$.data.species[0].englishName").value("Leopard gecko"))
+                .andExpect(jsonPath("$.data.species[0].scientificName").value("Eublepharis macularius"))
+                .andExpect(jsonPath("$.data.species[0].aliases[0]").value("레오"))
+                .andExpect(jsonPath("$.data.species[0].displayOrder").doesNotExist());
     }
 
     @Test
