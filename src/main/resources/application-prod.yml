@@ -2,7 +2,7 @@ spring:
   jpa:
     show-sql: false
 
-# 환경 변수와 상관없이 운영에서는 테스트 로그인을 끈다
+# 운영에서는 테스트 로그인을 끈다. 환경 변수 DEV_LOGIN_ENABLED=true가 이 값을 덮으면 DevLoginProdGuard가 서버 시작을 막는다
 dev:
   login:
     enabled: false
