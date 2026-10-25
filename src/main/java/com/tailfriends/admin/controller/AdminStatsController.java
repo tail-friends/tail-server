@@ -23,7 +23,8 @@ public class AdminStatsController {
     private final AdminStatsService adminStatsService;
 
     @Operation(summary = "운영 통계",
-            description = "전체 가입자·개체 수와 최근 days일(오늘 포함, KST)의 날짜별 새 가입자·새 개체 수. days는 1~90, 기본 7.")
+            description = "전체 가입자·개체 수와 최근 days일(오늘 포함, KST)의 날짜별 새 가입자·새 개체 수, AI 분석 수·실패 수. "
+                    + "days는 1~90, 기본 7.")
     @GetMapping("/api/v1/admin/stats")
     public ApiResponse<AdminStatsResponse> getStats(
             @RequestParam(defaultValue = "7") @Min(1) @Max(90) int days) {
