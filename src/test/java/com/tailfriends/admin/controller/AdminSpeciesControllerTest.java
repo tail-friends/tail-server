@@ -16,6 +16,7 @@ import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -42,7 +43,7 @@ class AdminSpeciesControllerTest {
     @WithMockUserId(role = "ADMIN")
     void 관리자는_소문자_값으로도_종을_추가할_수_있다() throws Exception {
         given(adminSpeciesService.create(any())).willReturn(new AdminSpeciesResponse(11L, "토케이 게코", "gecko",
-                false, 5, null, null, "forest", false));
+                false, 5, null, null, "forest", false, "reptile", null, null, List.of(), 1000));
 
         mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
                 .andExpect(status().isCreated())

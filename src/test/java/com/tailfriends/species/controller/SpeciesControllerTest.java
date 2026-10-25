@@ -31,7 +31,8 @@ class SpeciesControllerTest {
     void 인증_없이_종_목록을_조회한다() throws Exception {
         given(speciesService.getSpeciesList()).willReturn(new SpeciesListResponse(List.of(
                 new SpeciesResponse(1L, "레오파드 게코", "gecko", false, 4, null,
-                        new SpeciesResponse.EnvRange(null, null, null), "desert"))));
+                        new SpeciesResponse.EnvRange(null, null, null), "desert", "reptile",
+                        null, null, List.of()))));
 
         mockMvc.perform(get("/api/v1/species"))
                 .andExpect(status().isOk())

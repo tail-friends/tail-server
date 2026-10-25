@@ -2,6 +2,7 @@ package com.tailfriends.species.dto;
 
 import com.tailfriends.species.domain.Species;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 
 public record SpeciesResponse(
@@ -12,7 +13,11 @@ public record SpeciesResponse(
         int feedIntervalDays,
         Integer shedIntervalDays,
         EnvRange envRange,
-        String defaultHome
+        String defaultHome,
+        String category,
+        String englishName,
+        String scientificName,
+        List<String> aliases
 ) {
 
     public static SpeciesResponse from(Species species) {
@@ -27,7 +32,11 @@ public record SpeciesResponse(
                         Range.of(species.getHotMin(), species.getHotMax()),
                         Range.of(species.getCoolMin(), species.getCoolMax()),
                         Range.of(species.getHumidityMin(), species.getHumidityMax())),
-                species.getDefaultHome().name().toLowerCase(Locale.ROOT));
+                species.getDefaultHome().name().toLowerCase(Locale.ROOT),
+                species.getCategory().name().toLowerCase(Locale.ROOT),
+                species.getEnglishName(),
+                species.getScientificName(),
+                List.copyOf(species.getAliases()));
     }
 
     public record EnvRange(

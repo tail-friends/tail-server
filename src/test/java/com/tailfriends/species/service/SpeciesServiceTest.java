@@ -27,7 +27,7 @@ class SpeciesServiceTest {
 
     @Test
     void 체형과_기본_사육장은_소문자로_응답한다() {
-        given(speciesRepository.findAllByHiddenFalseOrderByIdAsc()).willReturn(List.of(
+        given(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc()).willReturn(List.of(
                 Species.builder()
                         .name("레오파드 게코")
                         .shape(Shape.GECKO)
@@ -45,7 +45,7 @@ class SpeciesServiceTest {
 
     @Test
     void 온습도_값이_없으면_범위를_null로_응답한다() {
-        given(speciesRepository.findAllByHiddenFalseOrderByIdAsc()).willReturn(List.of(
+        given(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc()).willReturn(List.of(
                 Species.builder()
                         .name("볼 파이톤")
                         .shape(Shape.SNAKE)
@@ -62,7 +62,7 @@ class SpeciesServiceTest {
 
     @Test
     void 온습도_값이_있으면_최소_최대_범위로_응답한다() {
-        given(speciesRepository.findAllByHiddenFalseOrderByIdAsc()).willReturn(List.of(
+        given(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc()).willReturn(List.of(
                 Species.builder()
                         .name("레오파드 게코")
                         .shape(Shape.GECKO)

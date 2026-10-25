@@ -1,6 +1,7 @@
 package com.tailfriends.admin.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.tailfriends.species.domain.Category;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
 import jakarta.validation.constraints.Digits;
@@ -10,10 +11,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * shape, defaultHome은 대소문자를 가리지 않는다. (공개 종 목록은 소문자로 내려준다)
  * 온습도 범위는 비워 둘 수 있고, 최소가 최대보다 크면 400.
+ * category를 비우면 REPTILE, displayOrder를 비우면 1000. 별칭은 앞뒤 공백을 빼고 중복은 하나만 남긴다.
  */
 public record AdminSpeciesCreateRequest(
         @NotBlank @Size(max = 40) String name,
@@ -27,6 +30,11 @@ public record AdminSpeciesCreateRequest(
         @Digits(integer = 3, fraction = 1) BigDecimal coolMax,
         @Min(0) @Max(100) Integer humidityMin,
         @Min(0) @Max(100) Integer humidityMax,
-        @NotNull @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_VALUES) Home defaultHome
+        @NotNull @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_VALUES) Home defaultHome,
+        @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_VALUES) Category category,
+        @Size(max = 60) String englishName,
+        @Size(max = 80) String scientificName,
+        @Size(max = 10) List<@NotBlank @Size(max = 40) String> aliases,
+        @Min(0) @Max(10000) Integer displayOrder
 ) {
 }

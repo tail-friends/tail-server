@@ -15,7 +15,7 @@ public class SpeciesService {
 
     @Transactional(readOnly = true)
     public SpeciesListResponse getSpeciesList() {
-        return new SpeciesListResponse(speciesRepository.findAllByHiddenFalseOrderByIdAsc().stream()
+        return new SpeciesListResponse(speciesRepository.findAllByHiddenFalseOrderByDisplayOrderAscNameAsc().stream()
                 .map(SpeciesResponse::from)
                 .toList());
     }

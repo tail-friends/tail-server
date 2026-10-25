@@ -15,7 +15,7 @@ class SpeciesTest {
         Species species = leopardGecko();
 
         species.update(new SpeciesChange(null, null, null, 5, null,
-                new BigDecimal("30.0"), new BigDecimal("34.0"), null, null, null, null, null, null));
+                new BigDecimal("30.0"), new BigDecimal("34.0"), null, null, null, null, null, null, null, null, null, null, null));
 
         assertThat(species.getName()).isEqualTo("레오파드 게코");
         assertThat(species.getShape()).isEqualTo(Shape.GECKO);
@@ -29,7 +29,7 @@ class SpeciesTest {
         Species species = leopardGecko();
 
         assertThatThrownBy(() -> species.update(new SpeciesChange(null, null, null, null, null,
-                null, null, null, null, 70, 40, null, null)))
+                null, null, null, null, 70, 40, null, null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -43,7 +43,7 @@ class SpeciesTest {
         assertThat(species.isHidden()).isTrue();
 
         species.update(new SpeciesChange(null, null, null, null, null,
-                null, null, null, null, null, null, null, false));
+                null, null, null, null, null, null, null, false, null, null, null, null, null));
         assertThat(species.isHidden()).isFalse();
     }
 
