@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.tailfriends.auth.client.AppleOAuthClient;
 import com.tailfriends.auth.client.KakaoOAuthClient;
 import com.tailfriends.auth.client.OAuthUserInfo;
 import com.tailfriends.global.support.IntegrationTestSupport;
@@ -22,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * 카카오 서버 호출만 가짜로 바꾸고, 가입·토큰 발급·발급한 토큰으로 API 호출까지 실제 DB로 확인한다.
+ * 카카오·애플 서버 호출만 가짜로 바꾸고, 가입·토큰 발급·발급한 토큰으로 API 호출까지 실제 DB로 확인한다.
  */
 class OAuthLoginIntegrationTest extends IntegrationTestSupport {
 
@@ -32,9 +33,13 @@ class OAuthLoginIntegrationTest extends IntegrationTestSupport {
     @MockitoBean
     private KakaoOAuthClient kakaoOAuthClient;
 
+    @MockitoBean
+    private AppleOAuthClient appleOAuthClient;
+
     @BeforeEach
     void setUp() {
         given(kakaoOAuthClient.provider()).willReturn(Provider.KAKAO);
+        given(appleOAuthClient.provider()).willReturn(Provider.APPLE);
     }
 
     @Test
@@ -61,14 +66,19 @@ class OAuthLoginIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void 애플_로그인은_아직_지원하지_않아_400() throws Exception {
+    void 애플로_처음_로그인하면_기본_닉네임으로_가입된다() throws Exception {
+        String appleId = UUID.randomUUID().toString();
+        given(appleOAuthClient.fetchUser("apple-code", "https://app.example/callback"))
+                .willReturn(new OAuthUserInfo(appleId, null, "abc@privaterelay.appleid.com"));
+
         mockMvc.perform(post("/api/v1/auth/oauth/callback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "provider": "APPLE", "code": "auth-code", "redirectUri": "https://app.example/callback" }
+                                { "provider": "APPLE", "code": "apple-code", "redirectUri": "https://app.example/callback" }
                                 """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isNewUser").value(true))
+                .andExpect(jsonPath("$.data.user.nickname").value("사육사"));
     }
 
     private ResultActions login() throws Exception {
