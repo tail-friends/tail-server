@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpeciesRepository extends JpaRepository<Species, Long> {
 
-    List<Species> findAllByHiddenFalseOrderByIdAsc();
+    List<Species> findAllByHiddenFalseOrderByDisplayOrderAscNameAsc();
 
-    List<Species> findAllByOrderByIdAsc();
+    List<Species> findAllByOrderByDisplayOrderAscNameAsc();
 
     Optional<Species> findByName(String name);
 

@@ -26,6 +26,12 @@ class SpeciesIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.data.species[0].feedIntervalDays").value(4))
                 .andExpect(jsonPath("$.data.species[0].defaultHome").value("desert"))
                 .andExpect(jsonPath("$.data.species[3].name").value("비어디드 드래곤"))
-                .andExpect(jsonPath("$.data.species[3].spiky").value(true));
+                .andExpect(jsonPath("$.data.species[3].spiky").value(true))
+                .andExpect(jsonPath("$.data.species[0].category").value("reptile"))
+                .andExpect(jsonPath("$.data.species[0].englishName").value("Leopard gecko"))
+                .andExpect(jsonPath("$.data.species[0].scientificName").value("Eublepharis macularius"))
+                .andExpect(jsonPath("$.data.species[0].aliases", hasSize(0)))
+                .andExpect(jsonPath("$.data.species[4].scientificName").isEmpty())
+                .andExpect(jsonPath("$.data.species[9].name").value("육지 거북"));
     }
 }

@@ -28,7 +28,7 @@ class AdminSpeciesServiceTest {
         given(speciesRepository.existsByName("레오파드 게코")).willReturn(true);
 
         assertThatThrownBy(() -> service.create(new AdminSpeciesCreateRequest(" 레오파드 게코 ", Shape.GECKO, null, 4,
-                null, null, null, null, null, null, null, Home.DESERT)))
+                null, null, null, null, null, null, null, Home.DESERT, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -59,6 +59,6 @@ class AdminSpeciesServiceTest {
 
     private static AdminSpeciesUpdateRequest nameChange(String name) {
         return new AdminSpeciesUpdateRequest(name, null, null, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null, null, null, null, null);
     }
 }

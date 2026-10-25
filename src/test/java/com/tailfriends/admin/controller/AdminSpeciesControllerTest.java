@@ -16,6 +16,7 @@ import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
 import com.tailfriends.species.domain.Home;
 import com.tailfriends.species.domain.Shape;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -42,7 +43,7 @@ class AdminSpeciesControllerTest {
     @WithMockUserId(role = "ADMIN")
     void 관리자는_소문자_값으로도_종을_추가할_수_있다() throws Exception {
         given(adminSpeciesService.create(any())).willReturn(new AdminSpeciesResponse(11L, "토케이 게코", "gecko",
-                false, 5, null, null, "forest", false));
+                false, 5, null, null, "forest", false, "reptile", null, null, List.of(), 1000));
 
         mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
                 .andExpect(status().isCreated())
@@ -73,6 +74,30 @@ class AdminSpeciesControllerTest {
     void 급여_주기가_범위를_벗어나면_400() throws Exception {
         mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"name\": \"토케이 게코\", \"shape\": \"GECKO\", \"feedIntervalDays\": 0, \"defaultHome\": \"FOREST\" }"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    @WithMockUserId(role = "ADMIN")
+    void 별칭이_10개를_넘으면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "토케이 게코", "shape": "GECKO", "feedIntervalDays": 5, "defaultHome": "FOREST",
+                                  "aliases": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    @WithMockUserId(role = "ADMIN")
+    void 아직_없는_분류면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "타란툴라", "shape": "GECKO", "feedIntervalDays": 7, "defaultHome": "FOREST",
+                                  "category": "ARACHNID" }
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
     }
