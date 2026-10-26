@@ -118,6 +118,7 @@ com.tailfriends
 ├─ log       사육 기록
 ├─ photo     사진, AI 분석
 ├─ health    건강 경고
+├─ schedule  반복 일정
 └─ admin     관리자
 ```
 
