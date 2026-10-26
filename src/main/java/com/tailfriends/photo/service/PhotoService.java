@@ -5,15 +5,20 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
+import com.tailfriends.global.util.KstDate;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
+import com.tailfriends.photo.storage.StorageProperties;
 import com.tailfriends.user.domain.ConsentType;
+import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.service.ConsentService;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -39,11 +44,15 @@ public class PhotoService {
     private final PhotoStorage photoStorage;
     private final ImageResizer imageResizer;
     private final ConsentService consentService;
+    private final StorageProperties storageProperties;
+    private final Clock clock;
 
     /**
      * 128px 썸네일을 만들고, keepOriginal이면서 원본 사진 보관에 동의한 사용자면 긴 변 1600px로 줄인 원본도 보관한다.
      * 동의하지 않았으면 원본은 보관하지 않고 originalKept=false로 알려준다. 모두 JPG로 저장한다.
      * 원본을 보관하지 않는 캐릭터 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
+     *
+     * @throws BusinessException 오늘(KST) 올린 사진이 하루 제한에 닿았으면 PHOTO_LIMIT_EXCEEDED
      */
     @Transactional
     public PhotoUploadResponse upload(Long animalId, PhotoPurpose purpose, boolean keepOriginal,
@@ -51,6 +60,7 @@ public class PhotoService {
         Long userId = currentUser.id();
         Animal animal = animalRepository.findByIdAndUserId(animalId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
+        User user = lockUserWithinDailyLimit(userId);
         boolean keep = keepOriginal && consentService.isAgreed(userId, ConsentType.KEEP_ORIGINAL);
         boolean keepAnalysisCopy = !keep && purpose == PhotoPurpose.CHARACTER;
         byte[] bytes = read(file);
@@ -75,7 +85,7 @@ public class PhotoService {
                 savedKeys.add(secondKey);
             }
             Photo photo = photoRepository.save(Photo.builder()
-                    .user(userRepository.getReferenceById(userId))
+                    .user(user)
                     .animal(animal)
                     .purpose(purpose)
                     .thumbnailKey(thumbnailKey)
@@ -87,6 +97,21 @@ public class PhotoService {
             savedKeys.forEach(this::deleteQuietly);
             throw e;
         }
+    }
+
+    /**
+     * 같은 사용자의 업로드를 사용자 행 잠금으로 차례로 처리해, 동시에 보내도 하루 제한을 넘지 않게 한다.
+     * 토큰은 유효하지만 사용자가 없으면(탈퇴 등) 다시 로그인하도록 UNAUTHORIZED.
+     */
+    private User lockUserWithinDailyLimit(Long userId) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        Instant startOfToday = KstDate.today(clock).atStartOfDay(KstDate.ZONE).toInstant();
+        if (photoRepository.countByUserIdAndCreatedAtGreaterThanEqual(userId, startOfToday)
+                >= storageProperties.dailyUploadLimit()) {
+            throw new BusinessException(ErrorCode.PHOTO_LIMIT_EXCEEDED);
+        }
+        return user;
     }
 
     private static byte[] read(MultipartFile file) {

@@ -43,6 +43,7 @@ public enum ErrorCode {
 
     // 429
     AI_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 AI 분석 횟수를 모두 사용했어요"),
+    PHOTO_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 올릴 수 있는 사진을 모두 올렸어요"),
 
     // 500
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요"),
