@@ -92,6 +92,11 @@ public class Log extends BaseTimeEntity {
 
     private Integer humidity;
 
+    /**
+     * 일괄 기록으로 함께 저장한 기록 묶음. 혼자 저장했으면 null.
+     */
+    private UUID batchId;
+
     private Log(Animal animal, User user, UUID clientId, LogType type, LocalDate logDate, String memo) {
         this.animal = animal;
         this.user = user;
@@ -112,6 +117,18 @@ public class Log extends BaseTimeEntity {
         log.apply(details);
         log.fillDefaults();
         log.validate();
+        return log;
+    }
+
+    /**
+     * 일괄 기록의 한 건. 나머지는 create와 같다.
+     *
+     * @throws BusinessException 종류별 필수 값이 없으면 INVALID_INPUT
+     */
+    public static Log createInBatch(UUID batchId, Animal animal, User user, UUID clientId, LogType type,
+                                    LocalDate logDate, String memo, LogDetails details) {
+        Log log = create(animal, user, clientId, type, logDate, memo, details);
+        log.batchId = batchId;
         return log;
     }
 

@@ -156,4 +156,8 @@ public interface LogRepository extends JpaRepository<Log, Long> {
             order by l.id
             """)
     List<DoneLog> findDoneLogs(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    List<Log> findAllByUserIdAndClientIdIn(Long userId, Collection<UUID> clientIds);
+
+    List<Log> findAllByUserIdAndBatchIdOrderByIdAsc(Long userId, UUID batchId);
 }
