@@ -28,6 +28,7 @@ public enum ErrorCode {
     ALERT_NOT_FOUND(HttpStatus.NOT_FOUND, "경고를 찾을 수 없어요"),
     PHOTO_NOT_FOUND(HttpStatus.NOT_FOUND, "사진을 찾을 수 없어요"),
     SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "일정을 찾을 수 없어요"),
+    BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "일괄 기록을 찾을 수 없어요"),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식이에요"),
@@ -35,6 +36,7 @@ public enum ErrorCode {
     // 409
     DUPLICATE_CLIENT_ID(HttpStatus.CONFLICT, "이미 저장된 기록이에요"),
     NOT_ENOUGH_POINTS(HttpStatus.CONFLICT, "포인트가 부족해요"),
+    UNDO_EXPIRED(HttpStatus.CONFLICT, "되돌릴 수 있는 시간이 지났어요"),
 
     // 422
     NO_REPTILE_IN_PHOTO(HttpStatus.UNPROCESSABLE_ENTITY, "사진에서 파충류를 찾지 못했어요"),
