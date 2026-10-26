@@ -15,3 +15,7 @@ cors:
 storage:
   local-path: build/test-storage
   public-url: http://localhost/files
+
+# 테스트 전용 토큰 암호화 키 (32바이트)
+oauth:
+  token-encryption-key: dGVzdC1vYXV0aC10b2tlbi1lbmNyeXB0aW9uLWtleSE=

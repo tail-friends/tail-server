@@ -1,9 +1,11 @@
 package com.tailfriends.auth.service;
 
 import com.tailfriends.auth.client.OAuthUserInfo;
+import com.tailfriends.auth.domain.UserOAuthToken;
 import com.tailfriends.auth.dto.OAuthLoginResponse;
 import com.tailfriends.auth.dto.OAuthLoginResponse.LoginUser;
 import com.tailfriends.auth.dto.TokenResponse;
+import com.tailfriends.auth.repository.UserOAuthTokenRepository;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -22,9 +24,12 @@ public class SignInService {
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
+    private final UserOAuthTokenRepository userOAuthTokenRepository;
+    private final OAuthTokenCipher oauthTokenCipher;
 
     /**
      * 처음 보는 소셜 계정이면 가입시키고, 토큰을 발급한다. 기존 사용자의 닉네임·이메일은 바꾸지 않는다.
+     * 소셜 refresh token을 받았으면(애플) 탈퇴 때 철회하도록 암호화해 저장한다. 로그인할 때마다 새 토큰으로 바꾼다.
      */
     @Transactional
     public OAuthLoginResponse signIn(Provider provider, OAuthUserInfo userInfo) {
@@ -36,9 +41,19 @@ public class SignInService {
                 .email(userInfo.email())
                 .build()));
 
+        if (userInfo.refreshToken() != null) {
+            saveOAuthToken(user, provider, oauthTokenCipher.encrypt(userInfo.refreshToken()));
+        }
+
         TokenResponse tokens = tokenService.issue(user);
         return new OAuthLoginResponse(tokens.accessToken(), tokens.refreshToken(), existing.isEmpty(),
                 new LoginUser(user.getId(), user.getNickname()));
+    }
+
+    private void saveOAuthToken(User user, Provider provider, String encrypted) {
+        userOAuthTokenRepository.findByUserId(user.getId()).ifPresentOrElse(
+                saved -> saved.change(encrypted),
+                () -> userOAuthTokenRepository.save(UserOAuthToken.of(user, provider, encrypted)));
     }
 
     /**
