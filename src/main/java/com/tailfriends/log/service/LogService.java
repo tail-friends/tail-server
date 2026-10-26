@@ -19,6 +19,7 @@ import com.tailfriends.log.dto.LogListResponse;
 import com.tailfriends.log.dto.LogResponse;
 import com.tailfriends.log.dto.LogUpdateRequest;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -40,10 +41,12 @@ public class LogService {
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final HealthAlertService healthAlertService;
+    private final ScheduleService scheduleService;
     private final Clock clock;
 
     /**
      * 같은 사용자가 같은 clientId로 다시 보내면 저장하지 않고 409와 기존 기록 ID를 돌려준다. (오프라인 재전송)
+     * 더스팅한 급여 기록이면 더스팅 일정을 자동 완료한다.
      */
     @Transactional
     public LogCreateResponse create(LogCreateRequest request) {
@@ -65,6 +68,7 @@ public class LogService {
                 request.date(),
                 request.memo(),
                 request.toDetails()));
+        completeDustingIfDusted(userId, log);
         List<AlertResponse> newAlerts = healthAlertService.evaluate(animal, log.getType());
         return new LogCreateResponse(log.getId(), newAlerts, FeedResponse.from(feedService.scheduleOf(animal)));
     }
@@ -101,6 +105,7 @@ public class LogService {
         Log log = findLog(userId, logId);
         validateDate(request.date());
         log.update(request.date(), request.memo(), request.toDetails());
+        completeDustingIfDusted(userId, log);
         healthAlertService.evaluate(log.getAnimal(), log.getType());
         return LogResponse.from(log);
     }
@@ -122,6 +127,12 @@ public class LogService {
     private Log findLog(Long userId, Long logId) {
         return logRepository.findByIdAndUserId(logId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOG_NOT_FOUND));
+    }
+
+    private void completeDustingIfDusted(Long userId, Log log) {
+        if (Boolean.TRUE.equals(log.getDusted())) {
+            scheduleService.completeDusting(userId, log.getAnimal().getId(), log.getLogDate());
+        }
     }
 
     private void validateDate(LocalDate date) {

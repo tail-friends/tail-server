@@ -14,6 +14,7 @@ import com.tailfriends.log.dto.LogBatchRequest.Item;
 import com.tailfriends.log.dto.LogBatchResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.Clock;
@@ -48,6 +49,7 @@ public class LogBatchService {
     private final AnimalRepository animalRepository;
     private final UserRepository userRepository;
     private final HealthAlertService healthAlertService;
+    private final ScheduleService scheduleService;
     private final Clock clock;
 
     /**
@@ -67,12 +69,16 @@ public class LogBatchService {
                 .map(item -> logRepository.save(Log.createInBatch(batchId, animals.get(item.animalId()), user,
                         item.clientId(), request.type(), request.date(), item.memo(), item.toDetails())))
                 .toList();
+        logs.stream()
+                .filter(log -> Boolean.TRUE.equals(log.getDusted()))
+                .forEach(log -> scheduleService.completeDusting(userId, log.getAnimal().getId(), log.getLogDate()));
         animals.values().forEach(animal -> healthAlertService.evaluate(animal, request.type()));
         return new LogBatchResponse(batchId, logs.stream().map(Log::getId).toList(), undoUntil(logs));
     }
 
     /**
-     * 저장 후 5초(응답의 undoUntil) 안에만 통째로 지운다. 이번 기록으로 생긴 건강 경고는 그대로 둔다(기록 삭제와 같음).
+     * 저장 후 5초(응답의 undoUntil) 안에만 통째로 지운다. 이번 기록으로 생긴 건강 경고와 자동 완료한 더스팅 일정은
+     * 그대로 둔다(기록 삭제와 같음).
      *
      * @throws BusinessException 없거나 남의 일괄 기록이면 BATCH_NOT_FOUND, 5초가 지났으면 UNDO_EXPIRED
      */

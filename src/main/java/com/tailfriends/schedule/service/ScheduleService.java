@@ -7,6 +7,7 @@ import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.schedule.domain.Schedule;
+import com.tailfriends.schedule.domain.ScheduleKind;
 import com.tailfriends.schedule.dto.ScheduleCompleteRequest;
 import com.tailfriends.schedule.dto.ScheduleCompleteResponse;
 import com.tailfriends.schedule.dto.ScheduleCreateRequest;
@@ -17,6 +18,7 @@ import com.tailfriends.schedule.dto.ScheduleUpdateRequest;
 import com.tailfriends.schedule.repository.ScheduleRepository;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -91,6 +93,16 @@ public class ScheduleService {
         }
         schedule.complete(request.date());
         return new ScheduleCompleteResponse(schedule.getLastDoneDate(), schedule.getNextDate());
+    }
+
+    /**
+     * 급여 기록의 "더스팅함"으로 그 개체와 공통 더스팅 일정 중 기록일까지 해야 하는 일정을 기록일로 완료한다.
+     * 기록 서비스가 부르며, 기록일 검증(오늘 이후 불가)은 기록 서비스가 한다.
+     */
+    @Transactional
+    public void completeDusting(Long userId, Long animalId, LocalDate date) {
+        scheduleRepository.findDueOfAnimal(userId, animalId, ScheduleKind.DUSTING, date)
+                .forEach(schedule -> schedule.complete(date));
     }
 
     private Animal findAnimal(Long userId, Long animalId) {

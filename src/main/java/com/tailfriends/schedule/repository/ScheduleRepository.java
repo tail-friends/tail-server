@@ -1,6 +1,7 @@
 package com.tailfriends.schedule.repository;
 
 import com.tailfriends.schedule.domain.Schedule;
+import com.tailfriends.schedule.domain.ScheduleKind;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -47,4 +48,16 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
      */
     @Query("select s from Schedule s where s.user.id = :userId and s.lastDoneDate = :date order by s.id")
     List<Schedule> findDoneOfUser(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    /**
+     * 그 개체의 일정과 공통 일정 중 그 종류이고 그 날짜까지 해야 하는 일정(지난 일정 포함).
+     */
+    @Query("""
+            select s from Schedule s
+            where s.user.id = :userId and s.kind = :kind and s.nextDate <= :date
+              and (s.animal is null or s.animal.id = :animalId)
+            order by s.nextDate, s.id
+            """)
+    List<Schedule> findDueOfAnimal(@Param("userId") Long userId, @Param("animalId") Long animalId,
+                                   @Param("kind") ScheduleKind kind, @Param("date") LocalDate date);
 }
