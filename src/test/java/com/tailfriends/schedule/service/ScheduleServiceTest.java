@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -74,6 +75,23 @@ class ScheduleServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    void 더스팅_자동_완료는_기록일까지_해야_하는_더스팅_일정을_기록일로_완료한다() {
+        LocalDate date = LocalDate.of(2026, 10, 19);
+        Schedule overdue = Schedule.create(null, null, "칼슘 더스팅", ScheduleKind.DUSTING, Repeat.everyNDays(3),
+                LocalDate.of(2026, 10, 15), null);
+        Schedule today = Schedule.create(null, null, "비타민 더스팅", ScheduleKind.DUSTING, Repeat.everyNDays(7),
+                date, null);
+        given(scheduleRepository.findDueOfAnimal(USER_ID, 12L, ScheduleKind.DUSTING, date))
+                .willReturn(List.of(overdue, today));
+
+        service.completeDusting(USER_ID, 12L, date);
+
+        assertThat(overdue.getLastDoneDate()).isEqualTo(date);
+        assertThat(overdue.getNextDate()).isEqualTo(LocalDate.of(2026, 10, 22));
+        assertThat(today.getNextDate()).isEqualTo(LocalDate.of(2026, 10, 26));
     }
 
     @Test

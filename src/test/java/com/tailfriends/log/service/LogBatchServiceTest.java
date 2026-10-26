@@ -22,6 +22,7 @@ import com.tailfriends.log.dto.LogBatchRequest.Item;
 import com.tailfriends.log.dto.LogBatchResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -49,8 +50,9 @@ class LogBatchServiceTest {
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final HealthAlertService healthAlertService = mock(HealthAlertService.class);
+    private final ScheduleService scheduleService = mock(ScheduleService.class);
     private final LogBatchService service = new LogBatchService(CurrentUserStub.of(USER_ID), logRepository,
-            animalRepository, userRepository, healthAlertService, CLOCK);
+            animalRepository, userRepository, healthAlertService, scheduleService, CLOCK);
 
     private final Animal mango = animal(12L);
     private final Animal choco = animal(15L);
@@ -75,6 +77,17 @@ class LogBatchServiceTest {
         assertThat(response.undoUntil()).isEqualTo(NOW.plusSeconds(5));
         verify(healthAlertService).evaluate(choco, LogType.FEED);
         verify(healthAlertService).evaluate(mango, LogType.FEED);
+    }
+
+    @Test
+    void 더스팅한_항목의_개체만_더스팅_일정을_완료한다() {
+        Item dusted = new Item(null, 12L, null, "귀뚜라미", 6, false, true, null, null, null);
+        Item notDusted = new Item(null, 15L, null, "귀뚜라미", 6, false, false, null, null, null);
+
+        service.create(feedBatch(dusted, notDusted));
+
+        verify(scheduleService).completeDusting(USER_ID, 12L, TODAY);
+        verify(scheduleService, never()).completeDusting(USER_ID, 15L, TODAY);
     }
 
     @Test
