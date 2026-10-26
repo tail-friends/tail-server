@@ -24,8 +24,8 @@ public class AppleTokenRevoker {
     private final AppleOAuthClient appleOAuthClient;
 
     public void revokeAfterCommit(Long userId) {
-        String refreshToken = userOAuthTokenRepository.findByUserId(userId)
-                .map(token -> decryptQuietly(userId, token.getRefreshToken()))
+        String refreshToken = userOAuthTokenRepository.findRefreshTokenByUserId(userId)
+                .map(encrypted -> decryptQuietly(userId, encrypted))
                 .orElse(null);
         if (refreshToken == null) {
             log.warn("철회할 애플 토큰이 없어 철회 없이 탈퇴해요: userId={}", userId);
