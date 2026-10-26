@@ -56,7 +56,9 @@ class AppleOAuthClientTest {
 
         OAuthUserInfo user = client.fetchUser("auth-code", "https://app.example/callback");
 
-        assertThat(user).isEqualTo(new OAuthUserInfo("001234.abcd.0123", null, "abc@privaterelay.appleid.com"));
+        assertThat(user).isEqualTo(
+                new OAuthUserInfo("001234.abcd.0123", null, "abc@privaterelay.appleid.com", "apple-refresh"));
+        assertThat(user.toString()).doesNotContain("apple-refresh");
         server.verify();
     }
 
@@ -75,6 +77,30 @@ class AppleOAuthClientTest {
         assertThat(jws.getPayload().getSubject()).isEqualTo(BUNDLE_ID);
         assertThat(jws.getPayload().getAudience()).containsExactly(AppleOAuthClient.ISSUER);
         assertThat(jws.getPayload().getExpiration().toInstant()).isAfter(NOW);
+    }
+
+    @Test
+    void 탈퇴할_때_refresh_token을_철회한다() {
+        server.expect(requestTo(AppleOAuthClient.REVOKE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().formDataContains(Map.of(
+                        "client_id", BUNDLE_ID,
+                        "token", "apple-refresh",
+                        "token_type_hint", "refresh_token")))
+                .andRespond(withSuccess());
+
+        assertThat(client.revoke("apple-refresh")).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void 애플이_철회를_거절하면_예외_없이_false() {
+        server.expect(requestTo(AppleOAuthClient.REVOKE_URL))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"invalid_grant\"}"));
+
+        assertThat(client.revoke("apple-refresh")).isFalse();
     }
 
     @Test
