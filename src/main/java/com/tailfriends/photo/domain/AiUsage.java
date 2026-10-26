@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * AI 분석 1회. success는 AI가 답을 줬는지다. (사진에 파충류가 없다는 답도 성공)
+ * AI를 부르기 전에 성공으로 미리 기록해 하루 횟수를 잡아 두고, 실패하면 fail()로 바꾼다.
  */
 @Getter
 @Entity
@@ -49,5 +50,9 @@ public class AiUsage extends BaseTimeEntity {
 
     public static AiUsage of(User user, AiKind kind, boolean success) {
         return new AiUsage(user, kind, success);
+    }
+
+    public void fail() {
+        this.success = false;
     }
 }
