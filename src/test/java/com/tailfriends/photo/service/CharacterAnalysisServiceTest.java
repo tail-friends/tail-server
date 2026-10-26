@@ -67,7 +67,7 @@ class CharacterAnalysisServiceTest {
     @BeforeEach
     void setUp() {
         service = new CharacterAnalysisService(CurrentUserStub.of(1L), photoRepository, aiUsageRepository, userRepository, photoStorage,
-                characterAnalyzer, new AiProperties("gemini-test", 5, "key"), CLOCK);
+                characterAnalyzer, new AiProperties("gemini-test", 5, "key", 10), CLOCK);
     }
 
     @Test

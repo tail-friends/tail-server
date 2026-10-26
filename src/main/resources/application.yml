@@ -75,6 +75,7 @@ ai:
   model: ${AI_MODEL:gemini-2.5-flash}
   daily-limit: ${AI_DAILY_LIMIT:5}
   api-key: ${AI_API_KEY:}
+  daily-attempt-limit: ${AI_DAILY_ATTEMPT_LIMIT:10}
 
 # 로컬 테스트 로그인 (POST /api/v1/dev/login). 소셜 키 없이 토큰을 받는다. 운영 프로필에서 켜면 서버가 뜨지 않는다.
 dev:
