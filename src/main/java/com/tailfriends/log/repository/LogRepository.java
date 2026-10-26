@@ -135,4 +135,25 @@ public interface LogRepository extends JpaRepository<Log, Long> {
                             @Param("cursorDate") LocalDate cursorDate,
                             @Param("cursorId") Long cursorId,
                             Pageable pageable);
+
+    /**
+     * 가장 최근에 먹은 급여 기록의 먹이와 개수 ("안 먹음" 제외), 최신순. 개수는 pageable로 정한다.
+     */
+    @Query("""
+            select new com.tailfriends.log.repository.FedFood(l.food, l.foodCount) from Log l
+            where l.animal.id = :animalId
+              and l.type = com.tailfriends.log.domain.LogType.FEED and l.refused = false
+            order by l.logDate desc, l.id desc
+            """)
+    List<FedFood> findLatestFedFoods(@Param("animalId") Long animalId, Pageable pageable);
+
+    /**
+     * 그 날짜에 남긴 내 기록, 저장한 순.
+     */
+    @Query("""
+            select new com.tailfriends.log.repository.DoneLog(l.id, l.animal.id, l.type) from Log l
+            where l.user.id = :userId and l.logDate = :date
+            order by l.id
+            """)
+    List<DoneLog> findDoneLogs(@Param("userId") Long userId, @Param("date") LocalDate date);
 }
