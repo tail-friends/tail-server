@@ -119,6 +119,7 @@ com.tailfriends
 ├─ photo     사진, AI 분석
 ├─ health    건강 경고
 ├─ schedule  반복 일정
+├─ today     오늘 할 일 (여러 도메인을 모아 보여주기만 한다)
 └─ admin     관리자
 ```
 
