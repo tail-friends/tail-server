@@ -24,7 +24,7 @@ class KakaoOAuthClientTest {
     private final RestClient.Builder builder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final KakaoOAuthClient client = new KakaoOAuthClient(builder.build(), new OAuthProperties(
-            new OAuthProperties.Registration("kakao-key", "kakao-secret"), null));
+            new OAuthProperties.Registration("kakao-key", "kakao-secret"), null, null));
 
     @Test
     void 인가_코드로_토큰을_받고_사용자_정보를_가져온다() {
@@ -77,7 +77,7 @@ class KakaoOAuthClientTest {
     @Test
     void 앱_키가_없으면_소셜_서버를_호출하지_않고_실패한다() {
         KakaoOAuthClient unconfigured = new KakaoOAuthClient(builder.build(),
-                new OAuthProperties(new OAuthProperties.Registration("", ""), null));
+                new OAuthProperties(new OAuthProperties.Registration("", ""), null, null));
 
         assertThatThrownBy(() -> unconfigured.fetchUser("auth-code", "https://app.example/callback"))
                 .isInstanceOf(IllegalStateException.class);

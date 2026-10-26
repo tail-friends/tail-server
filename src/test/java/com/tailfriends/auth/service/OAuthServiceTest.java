@@ -41,7 +41,7 @@ class OAuthServiceTest {
         given(kakao.provider()).willReturn(Provider.KAKAO);
 
         assertThatThrownBy(() -> oauthService.login(
-                new OAuthLoginRequest(Provider.APPLE, "auth-code", "https://app.example/callback")))
+                new OAuthLoginRequest(Provider.GOOGLE, "auth-code", "https://app.example/callback")))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
