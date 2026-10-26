@@ -15,6 +15,8 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
 
     List<Photo> findAllByAnalysisKeyNotNullAndCreatedAtBefore(Instant before);
 
+    long countByUserIdAndCreatedAtGreaterThanEqual(Long userId, Instant since);
+
     /**
      * 사진 엔티티를 영속성 컨텍스트에 올리지 않는다. 올린 채로 사용자·개체를 지우면 flush할 때
      * 지워진 엔티티를 가리킨다는 TransientObjectException이 난다.
