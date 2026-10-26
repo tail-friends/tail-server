@@ -2,6 +2,7 @@
 """노션 "종 원본 표"에서 내보낸 CSV를 관리자 API로 일괄 등록한다.
 
 상태가 "검수 완료"인 행만 보내고, 서버에 이미 있는 이름은 건너뛴다. 그래서 여러 번 돌려도 안전하다.
+--update를 주면 이미 있는 종은 건너뛰지 않고 CSV 값으로 수정한다(비어 있는 칸은 서버 값을 그대로 둔다).
 표준 라이브러리만 쓴다 (Python 3.9 이상). 사용법은 같은 폴더의 README.md.
 """
 
@@ -50,6 +51,8 @@ def main():
     parser.add_argument("--dev-login", metavar="NAME",
                         help="로컬 테스트 로그인으로 관리자 토큰을 받는다. 없으면 환경 변수 %s를 쓴다" % TOKEN_ENV)
     parser.add_argument("--dry-run", action="store_true", help="서버에 보내지 않고 보낼 내용만 출력한다")
+    parser.add_argument("--update", action="store_true",
+                        help="이미 있는 종을 CSV 값으로 수정한다. 비어 있는 칸은 서버 값을 그대로 둔다")
     args = parser.parse_args()
 
     rows = read_rows(args.csv_path)
@@ -57,12 +60,13 @@ def main():
     print("CSV %d행 중 '%s' %d행" % (len(rows), READY_STATUS, len(ready)))
 
     api = Api(args.base_url.rstrip("/"), token(args))
-    existing = {species["name"] for species in api.get("/api/v1/admin/species")["species"]}
+    existing = {species["name"]: species["id"] for species in api.get("/api/v1/admin/species")["species"]}
 
-    created, skipped, failed = 0, 0, 0
+    created, updated, skipped, failed = 0, 0, 0, 0
     for row in ready:
         name = row["이름"].strip()
-        if name in existing:
+        species_id = existing.get(name)
+        if species_id is not None and not args.update:
             print("  건너뜀  %s (이미 있음)" % name)
             skipped += 1
             continue
@@ -73,24 +77,32 @@ def main():
             failed += 1
             continue
         if args.dry_run:
-            print("  보낼 값 %s" % json.dumps(body, ensure_ascii=False))
+            action = "수정할 값" if species_id is not None else "보낼 값"
+            print("  %s %s" % (action, json.dumps(body, ensure_ascii=False)))
             continue
         try:
-            api.post("/api/v1/admin/species", body)
+            if species_id is not None:
+                api.patch("/api/v1/admin/species/%d" % species_id, body)
+            else:
+                species_id = api.post("/api/v1/admin/species", body)["id"]
         except ApiError as e:
             print("  실패    %s: %s" % (name, e))
             failed += 1
             continue
-        existing.add(name)
-        print("  등록    %s" % name)
-        created += 1
+        if name in existing:
+            print("  수정    %s" % name)
+            updated += 1
+        else:
+            existing[name] = species_id
+            print("  등록    %s" % name)
+            created += 1
 
     if args.dry_run:
         print("미리 보기만 했어요. 서버에는 보내지 않았어요.")
     else:
-        print("등록 %d, 건너뜀 %d, 실패 %d" % (created, skipped, failed))
-        if created:
-            print("노션 표에서 등록한 행의 상태를 '등록됨'으로 바꿔 주세요.")
+        print("등록 %d, 수정 %d, 건너뜀 %d, 실패 %d" % (created, updated, skipped, failed))
+        if created or updated:
+            print("노션 표에서 등록·수정한 행의 상태를 '등록됨'으로 바꿔 주세요.")
     sys.exit(1 if failed else 0)
 
 
@@ -160,6 +172,9 @@ class Api:
 
     def post(self, path, body):
         return self._request("POST", path, body)
+
+    def patch(self, path, body):
+        return self._request("PATCH", path, body)
 
     def _request(self, method, path, body):
         headers = {"Content-Type": "application/json"}
