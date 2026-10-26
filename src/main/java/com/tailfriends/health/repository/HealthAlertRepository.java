@@ -55,4 +55,14 @@ public interface HealthAlertRepository extends JpaRepository<HealthAlert, Long> 
             group by a.animal.id
             """)
     List<OpenAlertCount> countOpenByAnimalIds(@Param("animalIds") Collection<Long> animalIds);
+
+    /**
+     * 내 전체 개체의 열린 경고, 최신순.
+     */
+    @Query("""
+            select new com.tailfriends.health.repository.OpenAlert(a.id, a.animal.id, a.type) from HealthAlert a
+            where a.animal.user.id = :userId and a.status = com.tailfriends.health.domain.AlertStatus.OPEN
+            order by a.id desc
+            """)
+    List<OpenAlert> findOpenByUser(@Param("userId") Long userId);
 }
