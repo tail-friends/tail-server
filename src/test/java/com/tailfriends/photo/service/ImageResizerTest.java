@@ -42,6 +42,34 @@ class ImageResizerTest {
     }
 
     @Test
+    void 휴대폰_사진의_회전_정보를_반영한다() throws IOException {
+        // 회전 정보 6 = 시계 방향 90도. 가로 40x20으로 찍혔지만 세로 20x40으로 보여야 한다
+        byte[] jpeg = withExifOrientation(image(40, 20, BufferedImage.TYPE_INT_RGB, "jpg"), 6);
+
+        assertThat(sizeOf(imageResizer.toJpegs(jpeg, 128).get(0))).containsExactly(20, 40);
+    }
+
+    @Test
+    void 큰_사진은_줄여_읽어도_정한_길이와_비율과_회전을_지킨다() throws IOException {
+        // 1000x500을 128로 줄일 때는 4칸마다 읽어 250x125만 푼다. 회전하면 125x250 → 64x128
+        byte[] jpeg = withExifOrientation(image(1000, 500, BufferedImage.TYPE_INT_RGB, "jpg"), 6);
+
+        List<byte[]> jpegs = imageResizer.toJpegs(jpeg, 128, 300);
+
+        assertThat(sizeOf(jpegs.get(0))).containsExactly(64, 128);
+        assertThat(sizeOf(jpegs.get(1))).containsExactly(150, 300);
+    }
+
+    @Test
+    void 줄여_읽는_간격은_읽은_긴_변이_만들_길이의_1배에서_2배_사이가_되게_정한다() {
+        assertThat(ImageResizer.subsamplingStep(3200, 1600)).isEqualTo(1);
+        assertThat(ImageResizer.subsamplingStep(3201, 1600)).isEqualTo(2);
+        assertThat(ImageResizer.subsamplingStep(8000, 1600)).isEqualTo(3);
+        assertThat(ImageResizer.subsamplingStep(8000, 128)).isEqualTo(32);
+        assertThat(ImageResizer.subsamplingStep(100, 128)).isEqualTo(1);
+    }
+
+    @Test
     void 투명한_배경은_흰색으로_채운다() throws IOException {
         byte[] png = image(10, 10, BufferedImage.TYPE_INT_ARGB, "png");
 
@@ -95,6 +123,25 @@ class ImageResizerTest {
     private static int[] sizeOf(byte[] image) throws IOException {
         BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(image));
         return new int[] {decoded.getWidth(), decoded.getHeight()};
+    }
+
+    /**
+     * JFIF(APP0) 뒤에 회전 정보(Orientation)만 담은 EXIF(APP1)를 끼워 넣는다.
+     */
+    private static byte[] withExifOrientation(byte[] jpeg, int orientation) {
+        ByteBuffer tiff = ByteBuffer.allocate(26)
+                .put(new byte[] {'M', 'M', 0, 42}).putInt(8)
+                .putShort((short) 1)
+                .putShort((short) 0x0112).putShort((short) 3).putInt(1).putShort((short) orientation).putShort((short) 0)
+                .putInt(0);
+        byte[] exif = ByteBuffer.allocate(6 + tiff.capacity()).put("Exif\0\0".getBytes(StandardCharsets.US_ASCII))
+                .put(tiff.array()).array();
+        int app0End = 4 + (((jpeg[4] & 0xFF) << 8) | (jpeg[5] & 0xFF));
+        return ByteBuffer.allocate(jpeg.length + 4 + exif.length)
+                .put(jpeg, 0, app0End)
+                .put((byte) 0xFF).put((byte) 0xE1).putShort((short) (2 + exif.length)).put(exif)
+                .put(jpeg, app0End, jpeg.length - app0End)
+                .array();
     }
 
     /**
