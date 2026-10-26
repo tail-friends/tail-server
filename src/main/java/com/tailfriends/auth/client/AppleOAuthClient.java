@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -25,16 +26,19 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * iOS 앱의 애플 로그인. 앱이 받은 인가 코드를 애플 토큰 API로 바꾸고, 함께 온 ID 토큰에서 사용자를 읽는다.
- * 애플은 이름을 ID 토큰에 주지 않아 nickname은 항상 null이다.
+ * 애플은 이름을 ID 토큰에 주지 않아 nickname은 항상 null이다. 탈퇴할 때 철회하도록 refresh token도 돌려준다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AppleOAuthClient implements OAuthClient {
 
     static final String TOKEN_URL = "https://appleid.apple.com/auth/token";
+    static final String REVOKE_URL = "https://appleid.apple.com/auth/revoke";
     static final String ISSUER = "https://appleid.apple.com";
     private static final Duration CLIENT_SECRET_TTL = Duration.ofMinutes(5);
 
@@ -53,12 +57,7 @@ public class AppleOAuthClient implements OAuthClient {
      */
     @Override
     public OAuthUserInfo fetchUser(String code, String redirectUri) {
-        OAuthProperties.Apple apple = properties.apple();
-        if (apple == null || !StringUtils.hasText(apple.clientId()) || !StringUtils.hasText(apple.teamId())
-                || !StringUtils.hasText(apple.keyId()) || !StringUtils.hasText(apple.privateKey())) {
-            throw new IllegalStateException(
-                    "애플 로그인 키(APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY)가 설정되지 않았어요");
-        }
+        OAuthProperties.Apple apple = requireApple();
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
@@ -78,11 +77,47 @@ public class AppleOAuthClient implements OAuthClient {
             }
             IdTokenClaims claims = readClaims(token.idToken());
             validate(claims, apple.clientId());
-            return new OAuthUserInfo(claims.sub(), null, claims.email());
+            return new OAuthUserInfo(claims.sub(), null, claims.email(), token.refreshToken());
         } catch (HttpClientErrorException e) {
             // 인가 코드 만료·재사용, client secret 서명 오류 등은 4xx(invalid_grant, invalid_client)로 온다
             throw new BusinessException(ErrorCode.OAUTH_FAILED);
         }
+    }
+
+    /**
+     * 회원 탈퇴 때 애플 토큰을 철회한다 (App Store 심사 가이드라인 5.1.1(v)).
+     *
+     * @return 철회했으면 true. 애플이 거절하거나(이미 철회됨 등) 연결하지 못하면 로그를 남기고 false
+     */
+    public boolean revoke(String refreshToken) {
+        OAuthProperties.Apple apple = requireApple();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("client_id", apple.clientId());
+        form.add("client_secret", clientSecret(apple));
+        form.add("token", refreshToken);
+        form.add("token_type_hint", "refresh_token");
+        try {
+            oauthRestClient.post()
+                    .uri(REVOKE_URL)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("애플 토큰을 철회하지 못했어요: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private OAuthProperties.Apple requireApple() {
+        OAuthProperties.Apple apple = properties.apple();
+        if (apple == null || !StringUtils.hasText(apple.clientId()) || !StringUtils.hasText(apple.teamId())
+                || !StringUtils.hasText(apple.keyId()) || !StringUtils.hasText(apple.privateKey())) {
+            throw new IllegalStateException(
+                    "애플 로그인 키(APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY)가 설정되지 않았어요");
+        }
+        return apple;
     }
 
     /**
@@ -141,7 +176,8 @@ public class AppleOAuthClient implements OAuthClient {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record TokenResponse(@JsonProperty("id_token") String idToken) {
+    record TokenResponse(@JsonProperty("id_token") String idToken,
+                         @JsonProperty("refresh_token") String refreshToken) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
