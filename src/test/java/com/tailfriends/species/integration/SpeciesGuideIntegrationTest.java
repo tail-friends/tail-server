@@ -8,9 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.tailfriends.global.security.JwtProvider;
+import com.tailfriends.global.support.AdminTokens;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.global.util.KstDate;
-import com.tailfriends.user.domain.Role;
+import com.tailfriends.user.repository.UserRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ class SpeciesGuideIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private JwtProvider jwtProvider;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     void 관리자가_저장한_가이드를_로그인_없이_조회하고_다시_저장하면_빠진_섹션이_지워진다() throws Exception {
@@ -84,7 +88,7 @@ class SpeciesGuideIntegrationTest extends IntegrationTestSupport {
     }
 
     private ResultActions save(long speciesId, String body) throws Exception {
-        String admin = "Bearer " + jwtProvider.createAccessToken(1L, Role.ADMIN);
+        String admin = AdminTokens.newAdmin(userRepository, jwtProvider);
         return mockMvc.perform(put("/api/v1/admin/species/{id}/guide", speciesId)
                 .header(HttpHeaders.AUTHORIZATION, admin)
                 .contentType(MediaType.APPLICATION_JSON)
