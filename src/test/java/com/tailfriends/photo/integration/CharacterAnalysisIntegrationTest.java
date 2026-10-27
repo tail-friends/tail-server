@@ -3,12 +3,18 @@ package com.tailfriends.photo.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.tailfriends.global.exception.BusinessException;
+import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.photo.ai.CharacterAnalysis;
@@ -24,7 +30,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -34,11 +47,14 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 /**
  * Gemini 호출만 가짜로 바꾸고, 사진 저장·분석용 사본·하루 횟수 제한은 실제 DB와 디스크로 확인한다.
  */
 class CharacterAnalysisIntegrationTest extends IntegrationTestSupport {
+
+    private static final int CONCURRENT_REQUESTS = 8;
 
     private static final CharacterAnalysis GECKO = new CharacterAnalysis(true, "gecko", "spots",
             new CharacterAnalysis.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"),
@@ -95,6 +111,67 @@ class CharacterAnalysisIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 동시에_요청해도_하루_5번만_AI를_부른다() throws Exception {
+        String token = token(saveUser());
+        long photoId = upload(token, createAnimal(token));
+        // AI가 답하는 동안 다른 요청이 들어오도록 조금 기다렸다 답한다
+        given(characterAnalyzer.analyze(any())).willAnswer(invocation -> {
+            Thread.sleep(200);
+            return GECKO;
+        });
+
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_REQUESTS);
+        List<Integer> statuses = new ArrayList<>();
+        try {
+            List<Future<Integer>> results = new ArrayList<>();
+            for (int i = 0; i < CONCURRENT_REQUESTS; i++) {
+                Callable<Integer> task = () -> {
+                    start.await();
+                    return mockMvc.perform(post("/api/v1/photos/{id}/character-analysis", photoId)
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                            .andReturn().getResponse().getStatus();
+                };
+                results.add(executor.submit(task));
+            }
+            start.countDown();
+            for (Future<Integer> result : results) {
+                statuses.add(result.get());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(statuses).filteredOn(status -> status == 200).hasSize(5);
+        assertThat(statuses).filteredOn(status -> status == 429).hasSize(CONCURRENT_REQUESTS - 5);
+        verify(characterAnalyzer, times(5)).analyze(any());
+    }
+
+    @Test
+    void AI가_실패한_시도는_5번에_세지_않지만_실패를_포함해_하루_10번까지만_시도한다() throws Exception {
+        String token = token(saveUser());
+        long photoId = upload(token, createAnimal(token));
+
+        given(characterAnalyzer.analyze(any())).willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE));
+        for (int i = 0; i < 5; i++) {
+            analyze(token, photoId).andExpect(status().isServiceUnavailable());
+        }
+        // 실패 5번 뒤에도 성공 횟수는 남아 있다
+        willReturn(GECKO).given(characterAnalyzer).analyze(any());
+        analyze(token, photoId).andExpect(status().isOk());
+
+        willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE)).given(characterAnalyzer).analyze(any());
+        for (int i = 0; i < 4; i++) {
+            analyze(token, photoId).andExpect(status().isServiceUnavailable());
+        }
+        // 시도 10번을 다 써서 성공이 1번뿐이어도 더 부르지 않는다
+        analyze(token, photoId)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("AI_LIMIT_EXCEEDED"));
+        verify(characterAnalyzer, times(10)).analyze(any());
+    }
+
+    @Test
     void 파충류가_없으면_422() throws Exception {
         String token = token(saveUser());
         long photoId = upload(token, createAnimal(token));
@@ -115,6 +192,11 @@ class CharacterAnalysisIntegrationTest extends IntegrationTestSupport {
                         .header(HttpHeaders.AUTHORIZATION, token(saveUser())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PHOTO_NOT_FOUND"));
+    }
+
+    private ResultActions analyze(String token, long photoId) throws Exception {
+        return mockMvc.perform(post("/api/v1/photos/{id}/character-analysis", photoId)
+                .header(HttpHeaders.AUTHORIZATION, token));
     }
 
     private long upload(String token, long animalId) throws Exception {

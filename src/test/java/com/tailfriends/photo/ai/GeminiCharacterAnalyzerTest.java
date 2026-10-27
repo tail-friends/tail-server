@@ -32,7 +32,7 @@ class GeminiCharacterAnalyzerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private GeminiCharacterAnalyzer analyzer(String apiKey) {
-        return new GeminiCharacterAnalyzer(builder.build(), new AiProperties("gemini-test", 5, apiKey), objectMapper);
+        return new GeminiCharacterAnalyzer(builder.build(), new AiProperties("gemini-test", 5, apiKey, 10), objectMapper);
     }
 
     @Test

@@ -3,7 +3,7 @@ package com.tailfriends.photo.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -12,21 +12,17 @@ import static org.mockito.Mockito.verify;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
-import com.tailfriends.photo.ai.AiProperties;
 import com.tailfriends.photo.ai.CharacterAnalysis;
 import com.tailfriends.photo.ai.CharacterAnalyzer;
-import com.tailfriends.photo.domain.AiUsage;
+import com.tailfriends.photo.domain.AiKind;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.CharacterAnalysisResponse;
-import com.tailfriends.photo.repository.AiUsageRepository;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
-import com.tailfriends.user.repository.UserRepository;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,9 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class CharacterAnalysisServiceTest {
 
-    // 2026-10-20 16:00 UTC = 2026-10-21 01:00 KST. 오늘(KST)은 2026-10-20 15:00 UTC부터
-    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-20T16:00:00Z"), ZoneOffset.UTC);
-    private static final Instant START_OF_TODAY = Instant.parse("2026-10-20T15:00:00Z");
+    private static final Long USAGE_ID = 77L;
     private static final byte[] JPEG = {1, 2, 3};
     private static final CharacterAnalysis GECKO = new CharacterAnalysis(true, "gecko", "spots",
             new CharacterAnalysis.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"),
@@ -51,30 +45,26 @@ class CharacterAnalysisServiceTest {
     private PhotoRepository photoRepository;
 
     @Mock
-    private AiUsageRepository aiUsageRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private PhotoStorage photoStorage;
 
     @Mock
     private CharacterAnalyzer characterAnalyzer;
 
+    @Mock
+    private AiUsageLimiter aiUsageLimiter;
+
     private CharacterAnalysisService service;
 
     @BeforeEach
     void setUp() {
-        service = new CharacterAnalysisService(CurrentUserStub.of(1L), photoRepository, aiUsageRepository, userRepository, photoStorage,
-                characterAnalyzer, new AiProperties("gemini-test", 5, "key"), CLOCK);
+        service = new CharacterAnalysisService(CurrentUserStub.of(1L), photoRepository, photoStorage, characterAnalyzer,
+                aiUsageLimiter);
     }
 
     @Test
-    void 분석용_사본으로_분석하고_성공으로_기록한다() {
+    void AI를_부르기_전에_횟수를_잡고_분석용_사본으로_분석한다() {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, "p_analysis.jpg")));
-        given(aiUsageRepository.countByUserIdAndSuccessTrueAndCreatedAtGreaterThanEqual(1L, START_OF_TODAY))
-                .willReturn(4L);
+        given(aiUsageLimiter.reserve(1L, AiKind.CHARACTER)).willReturn(USAGE_ID);
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willReturn(GECKO);
 
@@ -82,7 +72,7 @@ class CharacterAnalysisServiceTest {
 
         assertThat(response.shape()).isEqualTo("gecko");
         assertThat(response.guess()).isEqualTo("탠저린 레오파드 게코");
-        verify(aiUsageRepository).save(argThat(AiUsage::isSuccess));
+        verify(aiUsageLimiter, never()).release(anyLong());
     }
 
     @Test
@@ -100,31 +90,43 @@ class CharacterAnalysisServiceTest {
     @Test
     void 오늘_횟수를_다_쓰면_AI를_부르지_않고_AI_LIMIT_EXCEEDED() {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, "p_analysis.jpg")));
-        given(aiUsageRepository.countByUserIdAndSuccessTrueAndCreatedAtGreaterThanEqual(1L, START_OF_TODAY))
-                .willReturn(5L);
+        given(aiUsageLimiter.reserve(1L, AiKind.CHARACTER))
+                .willThrow(new BusinessException(ErrorCode.AI_LIMIT_EXCEEDED));
 
         assertError(() -> service.analyze(301L), ErrorCode.AI_LIMIT_EXCEEDED);
         verify(characterAnalyzer, never()).analyze(any());
     }
 
     @Test
-    void 파충류가_없으면_성공으로_기록하고_NO_REPTILE_IN_PHOTO() {
+    void 파충류가_없다는_답도_성공이라_횟수를_풀지_않고_NO_REPTILE_IN_PHOTO() {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, "p_analysis.jpg")));
+        given(aiUsageLimiter.reserve(1L, AiKind.CHARACTER)).willReturn(USAGE_ID);
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willReturn(CharacterAnalysis.notReptile());
 
         assertError(() -> service.analyze(301L), ErrorCode.NO_REPTILE_IN_PHOTO);
-        verify(aiUsageRepository).save(argThat(AiUsage::isSuccess));
+        verify(aiUsageLimiter, never()).release(anyLong());
     }
 
     @Test
-    void AI를_쓸_수_없으면_실패로_기록하고_AI_UNAVAILABLE() {
+    void AI를_쓸_수_없으면_잡은_횟수를_풀고_AI_UNAVAILABLE() {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, "p_analysis.jpg")));
+        given(aiUsageLimiter.reserve(1L, AiKind.CHARACTER)).willReturn(USAGE_ID);
         given(photoStorage.read("p_analysis.jpg")).willReturn(JPEG);
         given(characterAnalyzer.analyze(JPEG)).willThrow(new BusinessException(ErrorCode.AI_UNAVAILABLE));
 
         assertError(() -> service.analyze(301L), ErrorCode.AI_UNAVAILABLE);
-        verify(aiUsageRepository).save(argThat(usage -> !usage.isSuccess()));
+        verify(aiUsageLimiter).release(USAGE_ID);
+    }
+
+    @Test
+    void 사진을_읽지_못해도_잡은_횟수를_푼다() {
+        given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, "p_analysis.jpg")));
+        given(aiUsageLimiter.reserve(1L, AiKind.CHARACTER)).willReturn(USAGE_ID);
+        given(photoStorage.read("p_analysis.jpg")).willThrow(new UncheckedIOException(new IOException()));
+
+        assertThatThrownBy(() -> service.analyze(301L)).isInstanceOf(UncheckedIOException.class);
+        verify(aiUsageLimiter).release(USAGE_ID);
     }
 
     @Test
@@ -132,6 +134,7 @@ class CharacterAnalysisServiceTest {
         given(photoRepository.findByIdAndUserId(301L, 1L)).willReturn(Optional.of(photo(null, null)));
 
         assertError(() -> service.analyze(301L), ErrorCode.INVALID_INPUT);
+        verify(aiUsageLimiter, never()).reserve(any(), any());
         verify(characterAnalyzer, never()).analyze(any());
     }
 
