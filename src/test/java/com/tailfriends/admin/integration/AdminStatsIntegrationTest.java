@@ -7,18 +7,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
+import com.tailfriends.global.support.AdminTokens;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.photo.domain.AiKind;
 import com.tailfriends.photo.domain.AiUsage;
 import com.tailfriends.photo.repository.AiUsageRepository;
 import com.tailfriends.user.domain.Provider;
-import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -41,6 +42,14 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private AiUsageRepository aiUsageRepository;
+
+    private String admin;
+
+    // 관리자도 가입자로 세므로, 처음 통계를 읽기 전에 한 번만 만든다
+    @BeforeEach
+    void setUp() {
+        admin = AdminTokens.newAdmin(userRepository, jwtProvider);
+    }
 
     @Test
     void 가입자와_개체가_늘면_전체_수와_오늘_수가_그만큼_는다() throws Exception {
@@ -78,7 +87,6 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
     }
 
     private String stats() throws Exception {
-        String admin = "Bearer " + jwtProvider.createAccessToken(1L, Role.ADMIN);
         return mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, admin))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
