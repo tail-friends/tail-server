@@ -172,6 +172,7 @@ docker compose up -d
 | `feature/#이슈번호-설명` | 기능 개발. develop에서 따고 develop으로 PR |
 | `fix/#이슈번호-설명` | 버그 수정 |
 | `hotfix/설명` | 배포본 긴급 수정. main과 develop에 모두 병합 |
+| `release/날짜` | 릴리즈. develop에서 따고 main을 `git merge -s ours`로 합친 뒤 main으로 PR (AGENTS.md "릴리즈") |
 
 ### 커밋 메시지
 

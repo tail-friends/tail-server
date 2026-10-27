@@ -12,9 +12,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
+import com.tailfriends.global.support.AdminTokens;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.domain.Role;
+import com.tailfriends.user.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +36,9 @@ class AdminSpeciesIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private JwtProvider jwtProvider;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private SpeciesRepository speciesRepository;
@@ -150,6 +155,6 @@ class AdminSpeciesIntegrationTest extends IntegrationTestSupport {
     }
 
     private String adminToken() {
-        return "Bearer " + jwtProvider.createAccessToken(1L, Role.ADMIN);
+        return AdminTokens.newAdmin(userRepository, jwtProvider);
     }
 }

@@ -1,6 +1,7 @@
 package com.tailfriends.user.repository;
 
 import com.tailfriends.user.domain.Provider;
+import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.domain.User;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -20,4 +21,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * 지금 DB에 저장된 역할만 읽는다. 토큰의 역할은 발급할 때 값이라, 관리자 권한은 이것으로 다시 확인한다.
+     */
+    @Query("select u.role from User u where u.id = :id")
+    Optional<Role> findRoleById(@Param("id") Long id);
 }
