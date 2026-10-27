@@ -71,4 +71,21 @@ class AdminStatsControllerTest {
         mockMvc.perform(get("/api/v1/admin/stats"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUserId(value = 3L, role = "ADMIN")
+    void 토큰은_ADMIN이어도_DB_역할이_KEEPER면_403() throws Exception {
+        given(userRepository.findRoleById(3L)).willReturn(Optional.of(Role.KEEPER));
+
+        mockMvc.perform(get("/api/v1/admin/stats"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void 로그인하지_않으면_401() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/stats"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
 }
