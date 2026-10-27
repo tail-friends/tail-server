@@ -47,8 +47,11 @@ class AuthIntegrationTest extends IntegrationTestSupport {
                 .andReturn().getResponse().getContentAsString();
         String newRefreshToken = JsonPath.read(body, "$.data.refreshToken");
 
-        assertThat(refreshTokenRepository.findByTokenHash(RefreshToken.hash(tokens.refreshToken()))).isEmpty();
-        assertThat(refreshTokenRepository.findByTokenHash(RefreshToken.hash(newRefreshToken))).isPresent();
+        RefreshToken used = refreshTokenRepository.findByTokenHash(RefreshToken.hash(tokens.refreshToken())).orElseThrow();
+        RefreshToken issued = refreshTokenRepository.findByTokenHash(RefreshToken.hash(newRefreshToken)).orElseThrow();
+        assertThat(used.isUsed()).isTrue();
+        assertThat(issued.isUsed()).isFalse();
+        assertThat(issued.getFamilyId()).isEqualTo(used.getFamilyId());
         reissue(tokens.refreshToken())
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
