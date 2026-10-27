@@ -12,6 +12,7 @@ import com.tailfriends.user.domain.User;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.Base64;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class TokenService {
                 .user(user)
                 .tokenHash(RefreshToken.hash(refreshToken))
                 .expiresAt(clock.instant().plus(jwtProperties.refreshTokenExpiration()))
+                .familyId(UUID.randomUUID())
                 .build());
         return new TokenResponse(accessToken, refreshToken);
     }
