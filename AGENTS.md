@@ -183,6 +183,24 @@ com.tailfriends
 - 통합 테스트는 Docker가 없으면 로컬에서 건너뛰고, CI에서는 반드시 실행된다(건너뛰면 CI 실패). 로컬에서 `./gradlew build`가 통과해도 통합 테스트가 건너뛰어졌다면 "확인했다"고 쓰지 않는다.
 - 새 테이블이나 마이그레이션을 추가하면 그 테이블을 쓰는 통합 테스트를 하나 이상 작성한다.
 
+## 릴리즈
+
+1부의 릴리즈 PR(develop → main)은 이 레포에서 `release/` 브랜치로 올린다. 릴리즈 PR이 Squash로 머지된 적이 있어 main과 develop의 커밋 이력이 갈라져 있고, develop → main을 바로 올리면 충돌이 수십 개 난다. (#13, #107, #108)
+
+```bash
+git fetch origin
+git checkout -b release/2026-10-27 origin/develop   # 날짜는 릴리즈하는 날
+git merge -s ours --no-edit origin/main             # 내용은 develop 그대로, main 이력만 잇는다
+# 머지 결과가 develop과 같은지 확인한다. 두 값이 같아야 한다
+git merge-tree --write-tree origin/main HEAD
+git rev-parse origin/develop^{tree}
+```
+
+- `release/날짜` 브랜치에서 main으로 PR을 올린다. 제목은 `chore: 기능 릴리즈 (develop → main)`.
+- 본문에 포함된 PR, 새 마이그레이션, 운영 서버에 넣을 환경 변수를 적는다.
+- 머지는 여전히 **Create a merge commit**으로 한다. Squash로 머지돼도 다음 릴리즈에서 같은 절차로 올리면 충돌은 나지 않는다.
+- `-s ours`는 main에만 있는 변경을 버린다. main은 릴리즈 PR로만 바뀌므로 그런 변경이 없어야 하고, 위 두 값이 다르면 멈추고 사람에게 알린다. (`hotfix/`를 main에 넣었다면 develop에도 먼저 병합되어 있어야 한다.)
+
 ## 하지 말 것
 
 - `ddl-auto`를 `update`나 `create`로 바꾸지 않는다.
