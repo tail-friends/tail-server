@@ -91,6 +91,10 @@ public class Animal extends BaseTimeEntity {
         this.memo = memo;
     }
 
+    public void changeHome(Home home) {
+        this.home = home;
+    }
+
     public void changeSpecies(Species species, String speciesName) {
         this.species = species;
         this.speciesName = speciesName;
