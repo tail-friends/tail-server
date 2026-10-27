@@ -36,4 +36,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
                 select t.familyId from RefreshToken t where t.tokenHash = :tokenHash and t.user.id = :userId)
             """)
     int deleteFamilyByTokenHashAndUserId(@Param("tokenHash") String tokenHash, @Param("userId") Long userId);
+
+    /**
+     * 만료된 토큰(RefreshToken.isExpired와 같은 기준)을 지우고 지운 행 수를 돌려준다.
+     */
+    @Modifying
+    @Query("delete from RefreshToken r where r.expiresAt <= :now")
+    int deleteExpired(@Param("now") Instant now);
 }
