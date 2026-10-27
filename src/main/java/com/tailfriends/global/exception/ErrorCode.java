@@ -25,6 +25,10 @@ public enum ErrorCode {
     ANIMAL_NOT_FOUND(HttpStatus.NOT_FOUND, "개체를 찾을 수 없어요"),
     SPECIES_NOT_FOUND(HttpStatus.NOT_FOUND, "종을 찾을 수 없어요"),
     LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "기록을 찾을 수 없어요"),
+    ALERT_NOT_FOUND(HttpStatus.NOT_FOUND, "경고를 찾을 수 없어요"),
+    PHOTO_NOT_FOUND(HttpStatus.NOT_FOUND, "사진을 찾을 수 없어요"),
+    SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "일정을 찾을 수 없어요"),
+    BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "일괄 기록을 찾을 수 없어요"),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식이에요"),
@@ -32,15 +36,20 @@ public enum ErrorCode {
     // 409
     DUPLICATE_CLIENT_ID(HttpStatus.CONFLICT, "이미 저장된 기록이에요"),
     NOT_ENOUGH_POINTS(HttpStatus.CONFLICT, "포인트가 부족해요"),
+    UNDO_EXPIRED(HttpStatus.CONFLICT, "되돌릴 수 있는 시간이 지났어요"),
 
     // 422
     NO_REPTILE_IN_PHOTO(HttpStatus.UNPROCESSABLE_ENTITY, "사진에서 파충류를 찾지 못했어요"),
 
     // 429
     AI_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 AI 분석 횟수를 모두 사용했어요"),
+    PHOTO_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 올릴 수 있는 사진을 모두 올렸어요"),
 
     // 500
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요"),
+
+    // 503
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 AI 분석을 할 수 없어요. 잠시 후 다시 시도해 주세요");
 
     private final HttpStatus status;
     private final String message;

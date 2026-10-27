@@ -31,7 +31,7 @@ public class AuthController {
 
     @Operation(summary = "소셜 로그인",
             description = "앱이 받은 인가 코드로 가입 또는 로그인하고 토큰을 발급한다. 처음 로그인하면 isNewUser: true. "
-                    + "지금은 KAKAO, GOOGLE만 지원한다.")
+                    + "APPLE은 iOS 앱에서 받은 인가 코드만 받으며 redirectUri는 쓰지 않는다. 애플은 이름을 주지 않아 기본 닉네임으로 가입된다.")
     @PostMapping("/oauth/callback")
     public ApiResponse<OAuthLoginResponse> login(@Valid @RequestBody OAuthLoginRequest request) {
         return ApiResponse.success(oauthService.login(request));

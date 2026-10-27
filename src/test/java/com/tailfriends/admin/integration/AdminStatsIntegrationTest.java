@@ -9,6 +9,9 @@ import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.photo.domain.AiKind;
+import com.tailfriends.photo.domain.AiUsage;
+import com.tailfriends.photo.repository.AiUsageRepository;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.domain.User;
@@ -36,6 +39,9 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private AiUsageRepository aiUsageRepository;
+
     @Test
     void 가입자와_개체가_늘면_전체_수와_오늘_수가_그만큼_는다() throws Exception {
         String before = stats();
@@ -55,6 +61,20 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
         assertThat(today(after, "newAnimals") - today(before, "newAnimals")).isEqualTo(1);
         List<String> dates = JsonPath.read(after, "$.data.daily[*].date");
         assertThat(dates).hasSize(7).last().isEqualTo(LocalDate.now(KstDate.ZONE).toString());
+    }
+
+    @Test
+    void AI_분석을_하면_오늘_분석_수와_실패_수가_는다() throws Exception {
+        String before = stats();
+
+        User user = saveUser();
+        aiUsageRepository.save(AiUsage.of(user, AiKind.CHARACTER, true));
+        aiUsageRepository.save(AiUsage.of(user, AiKind.CHARACTER, true));
+        aiUsageRepository.save(AiUsage.of(user, AiKind.CHARACTER, false));
+
+        String after = stats();
+        assertThat(today(after, "aiAnalyses") - today(before, "aiAnalyses")).isEqualTo(3);
+        assertThat(today(after, "aiFailures") - today(before, "aiFailures")).isEqualTo(1);
     }
 
     private String stats() throws Exception {

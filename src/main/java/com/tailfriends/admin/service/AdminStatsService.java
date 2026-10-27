@@ -34,8 +34,14 @@ public class AdminStatsService {
 
         Map<LocalDate, Long> newUsers = byDate(statsRepository.countNewUsersByDay(from));
         Map<LocalDate, Long> newAnimals = byDate(statsRepository.countNewAnimalsByDay(from));
+        Map<LocalDate, Long> aiAnalyses = byDate(statsRepository.countAiAnalysesByDay(from));
+        Map<LocalDate, Long> aiFailures = byDate(statsRepository.countAiFailuresByDay(from));
         List<Daily> daily = Stream.iterate(firstDay, date -> !date.isAfter(today), date -> date.plusDays(1))
-                .map(date -> new Daily(date, newUsers.getOrDefault(date, 0L), newAnimals.getOrDefault(date, 0L)))
+                .map(date -> new Daily(date,
+                        newUsers.getOrDefault(date, 0L),
+                        newAnimals.getOrDefault(date, 0L),
+                        aiAnalyses.getOrDefault(date, 0L),
+                        aiFailures.getOrDefault(date, 0L)))
                 .toList();
 
         return new AdminStatsResponse(statsRepository.countUsers(), statsRepository.countAnimals(), daily);

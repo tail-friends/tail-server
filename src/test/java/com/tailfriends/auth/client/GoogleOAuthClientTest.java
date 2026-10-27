@@ -25,7 +25,7 @@ class GoogleOAuthClientTest {
     private final RestClient.Builder builder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final GoogleOAuthClient client = new GoogleOAuthClient(builder.build(), new OAuthProperties(
-            null, new OAuthProperties.Registration("google-id", "google-secret")));
+            null, new OAuthProperties.Registration("google-id", "google-secret"), null));
 
     @Test
     void 인가_코드로_토큰을_받고_사용자_정보를_가져온다() {

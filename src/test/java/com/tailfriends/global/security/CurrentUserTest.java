@@ -2,9 +2,12 @@ package com.tailfriends.global.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.user.repository.UserRepository;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 class CurrentUserTest {
 
-    private final CurrentUser currentUser = new CurrentUser();
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final CurrentUser currentUser = new CurrentUser(userRepository);
 
     @AfterEach
     void clear() {
@@ -26,8 +30,20 @@ class CurrentUserTest {
     void 인증된_사용자_ID를_돌려준다() {
         SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
                 7L, null, List.of(new SimpleGrantedAuthority("ROLE_KEEPER"))));
+        given(userRepository.existsById(7L)).willReturn(true);
 
         assertThat(currentUser.id()).isEqualTo(7L);
+    }
+
+    @Test
+    void 토큰은_유효해도_탈퇴해_사용자가_없으면_UNAUTHORIZED() {
+        SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                7L, null, List.of(new SimpleGrantedAuthority("ROLE_KEEPER"))));
+        given(userRepository.existsById(7L)).willReturn(false);
+
+        assertThatThrownBy(currentUser::id)
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }
 
     @Test

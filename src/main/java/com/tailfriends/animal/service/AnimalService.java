@@ -13,6 +13,8 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.health.dto.AlertResponse;
+import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.photo.service.PhotoFileRemover;
 import com.tailfriends.species.domain.Species;
 import com.tailfriends.species.repository.SpeciesRepository;
@@ -35,6 +37,8 @@ public class AnimalService {
     private final SpeciesRepository speciesRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final HealthAlertService healthAlertService;
+    private final AnimalStatusService animalStatusService;
     private final Clock clock;
     private final PhotoFileRemover photoFileRemover;
 
@@ -72,16 +76,17 @@ public class AnimalService {
         Long userId = currentUser.id();
         List<Animal> animals = animalRepository.findAllByUserIdOrderByIdAsc(userId);
         Map<Long, FeedSchedule> feeds = feedService.schedulesOf(animals);
+        Map<Long, Long> alertCounts = healthAlertService.openCountsOf(animals);
         return new AnimalListResponse(animals.stream()
-                .map(animal -> AnimalSummaryResponse.of(animal, feeds.get(animal.getId())))
+                .map(animal -> AnimalSummaryResponse.of(animal, feeds.get(animal.getId()),
+                        alertCounts.getOrDefault(animal.getId(), 0L)))
                 .toList());
     }
 
     @Transactional(readOnly = true)
     public AnimalResponse getAnimal(Long animalId) {
         Long userId = currentUser.id();
-        Animal animal = findAnimal(userId, animalId);
-        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
+        return toResponse(findAnimal(userId, animalId));
     }
 
     @Transactional
@@ -102,11 +107,11 @@ public class AnimalService {
                 request.hatchDate(),
                 request.feedIntervalDays(),
                 request.memo());
-        return AnimalResponse.of(animal, feedService.scheduleOf(animal));
+        return toResponse(animal);
     }
 
     /**
-     * 기록·캐릭터·사진 행은 DB의 ON DELETE CASCADE로 함께 지워진다. 사진 파일은 커밋 후 지운다.
+     * 기록·캐릭터·사진·건강 경고 행은 DB의 ON DELETE CASCADE로 함께 지워진다. 사진 파일은 커밋 후 지운다.
      */
     @Transactional
     public void delete(Long animalId) {
@@ -114,6 +119,13 @@ public class AnimalService {
         Animal animal = findAnimal(userId, animalId);
         photoFileRemover.removeFilesOfAnimalAfterCommit(animal.getId());
         animalRepository.delete(animal);
+    }
+
+    private AnimalResponse toResponse(Animal animal) {
+        FeedSchedule feed = feedService.scheduleOf(animal);
+        List<AlertResponse> alerts = healthAlertService.openAlertsOf(animal);
+        return AnimalResponse.of(animal, feed, alerts,
+                animalStatusService.statusOf(animal, feed, !alerts.isEmpty()));
     }
 
     /**

@@ -102,6 +102,17 @@ class UserSettingsServiceTest {
     }
 
     @Test
+    void 경고_기준은_저장한_값이고_바꾼_적이_없으면_기본값이다() {
+        UserSettings settings = UserSettings.defaultsFor(user);
+        settings.update(null, null, 5, null, 14, null);
+        given(userSettingsRepository.findById(1L)).willReturn(Optional.of(settings));
+        given(userSettingsRepository.findById(2L)).willReturn(Optional.empty());
+
+        assertThat(userSettingsService.alertRulesOf(1L)).isEqualTo(new AlertRules(5, 10, 14, 2));
+        assertThat(userSettingsService.alertRulesOf(2L)).isEqualTo(AlertRules.DEFAULT);
+    }
+
+    @Test
     void 사용자가_없으면_UNAUTHORIZED() {
         given(userRepository.findById(1L)).willReturn(Optional.empty());
 

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -21,15 +22,19 @@ import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
+import com.tailfriends.photo.storage.StorageProperties;
 import com.tailfriends.user.domain.ConsentType;
+import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.service.ConsentService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -39,6 +44,10 @@ class PhotoServiceTest {
 
     private static final byte[] BYTES = {1, 2, 3};
     private static final MockMultipartFile FILE = new MockMultipartFile("file", "mango.jpg", "image/jpeg", BYTES);
+    // UTC 2026-10-19 15:30 = KST 2026-10-20 00:30. KST 오늘은 UTC 2026-10-19 15:00부터
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-19T15:30:00Z"), ZoneOffset.UTC);
+    private static final Instant START_OF_TODAY = Instant.parse("2026-10-19T15:00:00Z");
+    private static final int DAILY_LIMIT = 30;
 
     @Mock
     private PhotoRepository photoRepository;
@@ -61,15 +70,56 @@ class PhotoServiceTest {
     @Mock
     private Animal animal;
 
+    @Mock
+    private User user;
+
     @Mock(strictness = Mock.Strictness.LENIENT)
     private CurrentUser currentUser;
 
-    @InjectMocks
     private PhotoService photoService;
 
     @BeforeEach
     void 현재_사용자() {
         given(currentUser.id()).willReturn(1L);
+        lenient().when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
+        photoService = new PhotoService(currentUser, photoRepository, animalRepository, userRepository, photoStorage,
+                imageResizer, consentService, new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
+    }
+
+    @Test
+    void 오늘_올린_사진이_하루_제한에_닿으면_파일을_읽지_않고_PHOTO_LIMIT_EXCEEDED() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(photoRepository.countByUserIdAndCreatedAtGreaterThanEqual(1L, START_OF_TODAY))
+                .willReturn((long) DAILY_LIMIT);
+
+        assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.PHOTO_LIMIT_EXCEEDED);
+        verify(imageResizer, never()).toJpegs(any(), any(int[].class));
+        verify(photoStorage, never()).save(anyString(), any());
+    }
+
+    @Test
+    void 하루_제한보다_하나_적으면_올릴_수_있고_잠근_사용자로_저장한다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(photoRepository.countByUserIdAndCreatedAtGreaterThanEqual(1L, START_OF_TODAY))
+                .willReturn((long) DAILY_LIMIT - 1);
+        given(imageResizer.toJpegs(BYTES, 128)).willReturn(List.of(new byte[] {9}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
+
+        verify(photoRepository).save(argThat((Photo photo) -> photo.getUser() == user));
+    }
+
+    @Test
+    void 사용자가_없으면_UNAUTHORIZED() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }
 
     @Test
@@ -79,13 +129,27 @@ class PhotoServiceTest {
         given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         given(photoStorage.urlOf(anyString())).willAnswer(invocation -> "http://files/" + invocation.getArgument(0));
 
-        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE);
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
 
         verify(photoStorage).save(argThat(key -> key.startsWith("photos/") && key.endsWith("_thumb.jpg")), any());
-        verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
+        verify(photoStorage, never()).save(argThat(key -> !key.endsWith("_thumb.jpg")), any());
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
         assertThat(response.originalKept()).isFalse();
         assertThat(response.thumbnailUrl()).startsWith("http://files/photos/").endsWith("_thumb.jpg");
+    }
+
+    @Test
+    void 원본을_보관하지_않는_캐릭터_사진은_1024px_분석용_사본을_둔다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(imageResizer.toJpegs(BYTES, 128, 1024)).willReturn(List.of(new byte[] {9}, new byte[] {7}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, false, FILE);
+
+        verify(photoStorage).save(argThat(key -> key.endsWith("_analysis.jpg")), eq(new byte[] {7}));
+        verify(photoRepository).save(argThat((Photo photo) ->
+                photo.getOriginalKey() == null && photo.getAnalysisKey().endsWith("_analysis.jpg")));
+        assertThat(response.originalKept()).isFalse();
     }
 
     @Test
@@ -113,6 +177,20 @@ class PhotoServiceTest {
 
         verify(photoStorage, never()).save(argThat(key -> key.endsWith("_original.jpg")), any());
         verify(photoRepository).save(argThat((Photo photo) -> photo.getOriginalKey() == null));
+        assertThat(response.originalKept()).isFalse();
+    }
+
+    @Test
+    void 원본_보관에_동의하지_않은_캐릭터_사진은_분석용_사본을_둔다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(false);
+        given(imageResizer.toJpegs(BYTES, 128, 1024)).willReturn(List.of(new byte[] {9}, new byte[] {7}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PhotoUploadResponse response = photoService.upload(12L, PhotoPurpose.CHARACTER, true, FILE);
+
+        verify(photoRepository).save(argThat((Photo photo) ->
+                photo.getOriginalKey() == null && photo.getAnalysisKey().endsWith("_analysis.jpg")));
         assertThat(response.originalKept()).isFalse();
     }
 

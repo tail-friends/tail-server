@@ -17,6 +17,7 @@ import com.tailfriends.animal.service.FeedService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
+import com.tailfriends.health.service.HealthAlertService;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
@@ -24,7 +25,9 @@ import com.tailfriends.log.dto.LogCreateRequest;
 import com.tailfriends.log.dto.LogCreateResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.dto.LogListResponse;
+import com.tailfriends.log.dto.LogUpdateRequest;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -50,8 +53,10 @@ class LogServiceTest {
     private final LogRepository logRepository = mock(LogRepository.class);
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final LogService logService = new LogService(CurrentUserStub.of(USER_ID), logRepository, animalRepository, userRepository,
-            new FeedService(logRepository, CLOCK), CLOCK);
+    private final ScheduleService scheduleService = mock(ScheduleService.class);
+    private final LogService logService = new LogService(CurrentUserStub.of(USER_ID), logRepository, animalRepository,
+            userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class), scheduleService,
+            CLOCK);
 
     @Test
     void 기록일은_한국_날짜로_오늘까지_허용한다() {
@@ -144,6 +149,36 @@ class LogServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
         verify(logRepository, never()).findPageAfter(anyLong(), any(), any(), anyLong(), any());
+    }
+
+    @Test
+    void 더스팅한_급여_기록이면_기록일로_더스팅_일정을_완료하고_아니면_건드리지_않는다() {
+        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
+        LocalDate date = LocalDate.of(2026, 10, 19);
+
+        logService.create(feedRequest(date, false));
+        verify(scheduleService, never()).completeDusting(any(), any(), any());
+
+        logService.create(feedRequest(date, true));
+        verify(scheduleService).completeDusting(USER_ID, ANIMAL_ID, date);
+    }
+
+    @Test
+    void 급여_기록을_더스팅함으로_고치면_더스팅_일정을_완료한다() {
+        LocalDate date = LocalDate.of(2026, 10, 19);
+        Log log = withId(Log.create(animal(), null, null, LogType.FEED, date, null, null), 902L);
+        given(logRepository.findByIdAndUserId(902L, USER_ID)).willReturn(Optional.of(log));
+
+        logService.update(902L, new LogUpdateRequest(null, null, null, null, null, true, null, null, null, null, null,
+                null, null, null));
+
+        verify(scheduleService).completeDusting(USER_ID, ANIMAL_ID, date);
+    }
+
+    private static LogCreateRequest feedRequest(LocalDate date, boolean dusted) {
+        return new LogCreateRequest(null, ANIMAL_ID, LogType.FEED, date, null, "귀뚜라미", 6, false, dusted,
+                null, null, null, null, null, null, null, null);
     }
 
     private static LogCreateRequest weightRequest(UUID clientId, LocalDate date) {

@@ -1,6 +1,7 @@
 package com.tailfriends.species.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 종 수정 값. null인 값은 바꾸지 않는다.
@@ -18,6 +19,11 @@ public record SpeciesChange(
         Integer humidityMin,
         Integer humidityMax,
         Home defaultHome,
-        Boolean hidden
+        Boolean hidden,
+        Category category,
+        String englishName,
+        String scientificName,
+        List<String> aliases,
+        Integer displayOrder
 ) {
 }

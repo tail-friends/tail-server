@@ -76,14 +76,33 @@ class PhotoFileRemovalIntegrationTest extends IntegrationTestSupport {
         assertThat(fileOf(photo)).doesNotExist();
     }
 
+    @Test
+    void 개체를_삭제하면_AI_분석용_사본_파일도_지워진다() throws Exception {
+        String token = tokenOfNewUser();
+        long animalId = createAnimal(token);
+        Photo photo = upload(token, animalId, "CHARACTER");
+        Path analysisFile = Path.of(storageProperties.localPath()).resolve(photo.getAnalysisKey());
+        assertThat(analysisFile).exists();
+
+        mockMvc.perform(delete("/api/v1/animals/" + animalId).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNoContent());
+
+        assertThat(analysisFile).doesNotExist();
+        assertThat(fileOf(photo)).doesNotExist();
+    }
+
     private Path fileOf(Photo photo) {
         return Path.of(storageProperties.localPath()).resolve(photo.getThumbnailKey());
     }
 
     private Photo upload(String token, long animalId) throws Exception {
+        return upload(token, animalId, "ALBUM");
+    }
+
+    private Photo upload(String token, long animalId, String purpose) throws Exception {
         String response = mockMvc.perform(multipart("/api/v1/photos").file(png())
                         .param("animalId", String.valueOf(animalId))
-                        .param("purpose", "ALBUM")
+                        .param("purpose", purpose)
                         .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

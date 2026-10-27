@@ -37,9 +37,20 @@ class AdminStatsServiceTest {
         assertThat(response.totalUsers()).isEqualTo(120);
         assertThat(response.totalAnimals()).isEqualTo(340);
         assertThat(response.daily()).containsExactly(
-                new Daily(LocalDate.of(2026, 10, 18), 3, 0),
-                new Daily(LocalDate.of(2026, 10, 19), 0, 5),
-                new Daily(LocalDate.of(2026, 10, 20), 1, 0));
+                new Daily(LocalDate.of(2026, 10, 18), 3, 0, 0, 0),
+                new Daily(LocalDate.of(2026, 10, 19), 0, 5, 0, 0),
+                new Daily(LocalDate.of(2026, 10, 20), 1, 0, 0, 0));
+    }
+
+    @Test
+    void AI_분석_수와_실패_수를_날짜별로_채운다() {
+        given(statsRepository.countAiAnalysesByDay(FROM)).willReturn(List.of(count("2026-10-19", 10), count("2026-10-20", 2)));
+        given(statsRepository.countAiFailuresByDay(FROM)).willReturn(List.of(count("2026-10-19", 1)));
+
+        AdminStatsResponse response = service.getStats(3);
+
+        assertThat(response.daily()).extracting(Daily::aiAnalyses).containsExactly(0L, 10L, 2L);
+        assertThat(response.daily()).extracting(Daily::aiFailures).containsExactly(0L, 1L, 0L);
     }
 
     private static DailyCount count(String day, long count) {

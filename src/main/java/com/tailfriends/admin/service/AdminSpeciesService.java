@@ -26,7 +26,7 @@ public class AdminSpeciesService {
      */
     @Transactional(readOnly = true)
     public AdminSpeciesListResponse getSpeciesList() {
-        return new AdminSpeciesListResponse(speciesRepository.findAllByOrderByIdAsc().stream()
+        return new AdminSpeciesListResponse(speciesRepository.findAllByOrderByDisplayOrderAscNameAsc().stream()
                 .map(AdminSpeciesResponse::from)
                 .toList());
     }
@@ -50,6 +50,11 @@ public class AdminSpeciesService {
                 .humidityMin(request.humidityMin())
                 .humidityMax(request.humidityMax())
                 .defaultHome(request.defaultHome())
+                .category(request.category())
+                .englishName(stripOrNull(request.englishName()))
+                .scientificName(stripOrNull(request.scientificName()))
+                .aliases(request.aliases())
+                .displayOrder(request.displayOrder())
                 .build());
         return AdminSpeciesResponse.from(species);
     }
@@ -71,6 +76,10 @@ public class AdminSpeciesService {
     @Transactional
     public void hide(Long speciesId) {
         findSpecies(speciesId).hide();
+    }
+
+    private static String stripOrNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 
     private Species findSpecies(Long speciesId) {

@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.tailfriends.auth.service.AppleTokenRevoker;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
@@ -30,6 +31,9 @@ class UserServiceTest {
     @Mock
     private PhotoFileRemover photoFileRemover;
 
+    @Mock
+    private AppleTokenRevoker appleTokenRevoker;
+
     @Mock(strictness = Mock.Strictness.LENIENT)
     private CurrentUser currentUser;
 
@@ -50,6 +54,18 @@ class UserServiceTest {
 
         verify(userRepository).delete(user);
         verify(photoFileRemover).removeFilesOfUserAfterCommit(1L);
+        verify(appleTokenRevoker, never()).revokeAfterCommit(any());
+    }
+
+    @Test
+    void 애플_로그인_사용자가_탈퇴하면_애플_토큰_철회를_예약한다() {
+        User user = User.builder().provider(Provider.APPLE).providerId("001234").nickname("사육사").build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        userService.withdraw();
+
+        verify(appleTokenRevoker).revokeAfterCommit(1L);
+        verify(userRepository).delete(user);
     }
 
     @Test
