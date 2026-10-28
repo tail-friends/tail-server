@@ -99,8 +99,8 @@ class EnvWarningIntegrationTest extends IntegrationTestSupport {
     @Test
     void 종에_범위가_없으면_경고를_만들지_않는다() throws Exception {
         String token = tokenOfNewUser();
-        // 기본 종(레오파드 게코)은 범위가 비어 있다
-        long animalId = createAnimal(token, 1L);
+        // 육지 거북은 종 원본 표에도 온습도 범위가 없다
+        long animalId = createAnimal(token, speciesRepository.findByName("육지 거북").orElseThrow().getId());
 
         writeEnv(token, animalId, "10.0", "5.0", 100)
                 .andExpect(status().isCreated())
