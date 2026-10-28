@@ -2,6 +2,8 @@ package com.tailfriends.animal.controller;
 
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
+import com.tailfriends.animal.dto.AnimalHomeRequest;
+import com.tailfriends.animal.dto.AnimalHomeResponse;
 import com.tailfriends.animal.dto.AnimalListResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
@@ -54,6 +56,13 @@ public class AnimalController {
     public ApiResponse<AnimalResponse> update(@PathVariable Long animalId,
                                               @Valid @RequestBody AnimalUpdateRequest request) {
         return ApiResponse.success(animalService.update(animalId, request));
+    }
+
+    @Operation(summary = "평소 사육장 변경", description = "home은 desert, forest, rock, night, pond. 대소문자는 가리지 않는다.")
+    @PatchMapping("/{animalId}/home")
+    public ApiResponse<AnimalHomeResponse> changeHome(@PathVariable Long animalId,
+                                                      @Valid @RequestBody AnimalHomeRequest request) {
+        return ApiResponse.success(animalService.changeHome(animalId, request));
     }
 
     @Operation(summary = "개체 삭제", description = "본문 없이 204.")

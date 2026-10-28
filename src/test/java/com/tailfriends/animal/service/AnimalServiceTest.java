@@ -11,6 +11,8 @@ import static org.mockito.Mockito.verify;
 import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.domain.Sex;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
+import com.tailfriends.animal.dto.AnimalHomeRequest;
+import com.tailfriends.animal.dto.AnimalHomeResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.repository.AnimalCharacterRepository;
@@ -141,6 +143,27 @@ class AnimalServiceTest {
 
         assertThat(animal.getSpecies()).isNull();
         assertThat(animal.getSpeciesName()).isEqualTo("사바나 모니터");
+    }
+
+    @Test
+    void 평소_사육장을_바꾸면_소문자로_돌려준다() {
+        Animal animal = animal();
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+
+        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST));
+
+        assertThat(animal.getHome()).isEqualTo(Home.FOREST);
+        assertThat(response.home()).isEqualTo("forest");
+    }
+
+    @Test
+    void 남의_개체나_없는_개체의_평소_사육장은_바꾸지_않는다() {
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
     }
 
     @Test
