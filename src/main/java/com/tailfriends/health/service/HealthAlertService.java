@@ -9,6 +9,7 @@ import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.health.domain.AlertStatus;
 import com.tailfriends.health.domain.AlertType;
+import com.tailfriends.health.domain.EnvReading;
 import com.tailfriends.health.domain.HealthAlert;
 import com.tailfriends.health.domain.HealthRules;
 import com.tailfriends.health.dto.AlertListResponse;
@@ -19,6 +20,7 @@ import com.tailfriends.health.repository.OpenAlertCount;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.species.domain.Species;
 import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.service.UserSettingsService;
 import java.math.BigDecimal;
@@ -57,6 +59,7 @@ public class HealthAlertService {
             case FEED -> judgeRefusal(animal, rulesOf(animal));
             case WEIGHT -> judgeWeightLoss(animal, rulesOf(animal));
             case CLEAN -> judgeLooseStool(animal, rulesOf(animal));
+            case ENV -> judgeEnv(animal);
             default -> Optional.empty();
         };
         return alert
@@ -173,5 +176,28 @@ public class HealthAlertService {
             return Optional.empty();
         }
         return Optional.of(HealthAlert.open(animal, AlertType.STOOL_ALERT, HealthRules.looseStoolMessage(rules)));
+    }
+
+    /**
+     * 가장 최근 온습도 기록을 종의 적정 범위와 비교한다. 핫존은 바닥 표면 온도다.
+     * 목록에 없는 종(직접 입력)은 범위가 없어 판정하지 않는다.
+     */
+    private Optional<HealthAlert> judgeEnv(Animal animal) {
+        Species species = animal.getSpecies();
+        if (species == null) {
+            return Optional.empty();
+        }
+        Optional<Log> latest = logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(
+                animal.getId(), LogType.ENV);
+        if (latest.isEmpty()) {
+            return Optional.empty();
+        }
+        Log env = latest.get();
+        List<EnvReading> readings = List.of(
+                new EnvReading("핫존 온도", env.getHotC(), species.getHotMin(), species.getHotMax(), "℃"),
+                new EnvReading("쿨존 온도", env.getCoolC(), species.getCoolMin(), species.getCoolMax(), "℃"),
+                EnvReading.humidity(env.getHumidity(), species.getHumidityMin(), species.getHumidityMax()));
+        return HealthRules.envWarningMessage(readings)
+                .map(message -> HealthAlert.open(animal, AlertType.ENV_WARNING, message));
     }
 }

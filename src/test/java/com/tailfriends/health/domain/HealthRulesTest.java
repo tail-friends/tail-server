@@ -68,4 +68,62 @@ class HealthRulesTest {
         assertThat(HealthRules.weightLossMessage(new AlertRules(3, 5, 14, 2), 6))
                 .isEqualTo("최근 14일 동안 체중이 6% 줄었어요");
     }
+
+    @Test
+    void 온습도가_모두_범위_안이면_환경_경고가_없다() {
+        assertThat(HealthRules.envWarningMessage(List.of(
+                hot("31.0", "31", "35"), cool("24", "22", "26"), EnvReading.humidity(40, 30, 40)))).isEmpty();
+    }
+
+    @Test
+    void 한_항목만_벗어나면_어느_쪽으로_벗어났는지와_범위를_적는다() {
+        assertThat(HealthRules.envWarningMessage(List.of(hot("29.5", "31", "35"))))
+                .hasValue("핫존 온도가 적정 범위(31~35℃)보다 낮아요");
+        assertThat(HealthRules.envWarningMessage(List.of(EnvReading.humidity(55, 30, 40))))
+                .hasValue("습도가 적정 범위(30~40%)보다 높아요");
+        assertThat(HealthRules.envWarningMessage(List.of(cool("21.5", "22.5", "26"))))
+                .hasValue("쿨존 온도가 적정 범위(22.5~26℃)보다 낮아요");
+    }
+
+    @Test
+    void 여러_항목이_벗어나면_항목만_이어서_적는다() {
+        assertThat(HealthRules.envWarningMessage(List.of(
+                hot("36", "31", "35"), cool("24", "22", "26"), EnvReading.humidity(20, 30, 40))))
+                .hasValue("핫존 온도와 습도가 적정 범위를 벗어났어요");
+        assertThat(HealthRules.envWarningMessage(List.of(
+                hot("36", "31", "35"), cool("20", "22", "26"), EnvReading.humidity(20, 30, 40))))
+                .hasValue("핫존 온도, 쿨존 온도와 습도가 적정 범위를 벗어났어요");
+    }
+
+    @Test
+    void 기록에_값이_없거나_종에_범위가_없는_항목은_보지_않는다() {
+        assertThat(HealthRules.envWarningMessage(List.of(
+                hot(null, "31", "35"), cool("10", null, null), EnvReading.humidity(90, null, null)))).isEmpty();
+    }
+
+    @Test
+    void 범위가_한쪽만_있으면_그쪽만_보고_이상_이하로_적는다() {
+        assertThat(HealthRules.envWarningMessage(List.of(hot("30", "31", null))))
+                .hasValue("핫존 온도가 적정 범위(31℃ 이상)보다 낮아요");
+        assertThat(HealthRules.envWarningMessage(List.of(EnvReading.humidity(70, null, 60))))
+                .hasValue("습도가 적정 범위(60% 이하)보다 높아요");
+        assertThat(HealthRules.envWarningMessage(List.of(hot("50", "31", null)))).isEmpty();
+    }
+
+    @Test
+    void 경계값은_범위_안이다() {
+        assertThat(HealthRules.envWarningMessage(List.of(hot("31", "31", "35"), hot("35.0", "31", "35")))).isEmpty();
+    }
+
+    private static EnvReading hot(String value, String min, String max) {
+        return new EnvReading("핫존 온도", decimal(value), decimal(min), decimal(max), "℃");
+    }
+
+    private static EnvReading cool(String value, String min, String max) {
+        return new EnvReading("쿨존 온도", decimal(value), decimal(min), decimal(max), "℃");
+    }
+
+    private static BigDecimal decimal(String value) {
+        return value == null ? null : new BigDecimal(value);
+    }
 }

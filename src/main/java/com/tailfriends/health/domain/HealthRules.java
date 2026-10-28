@@ -5,6 +5,7 @@ import com.tailfriends.user.domain.AlertRules;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
@@ -49,6 +50,26 @@ public final class HealthRules {
     public static boolean isLooseStoolStreak(AlertRules rules, List<Stool> latestStools) {
         return latestStools.size() >= rules.looseStoolCount()
                 && latestStools.stream().limit(rules.looseStoolCount()).allMatch(Stool.LOOSE::equals);
+    }
+
+    /**
+     * 범위를 벗어난 항목이 있으면 경고 문구를 돌려준다. 하나면 어느 쪽으로 벗어났는지와 범위를, 여럿이면 항목만 적는다.
+     *
+     * @param readings 가장 최근 온습도 기록의 항목들 (핫존 온도, 쿨존 온도, 습도 순)
+     */
+    public static Optional<String> envWarningMessage(List<EnvReading> readings) {
+        List<EnvReading> outOfRange = readings.stream().filter(EnvReading::isOutOfRange).toList();
+        if (outOfRange.isEmpty()) {
+            return Optional.empty();
+        }
+        if (outOfRange.size() == 1) {
+            EnvReading reading = outOfRange.getFirst();
+            return Optional.of("%s가 적정 범위(%s)보다 %s".formatted(
+                    reading.label(), reading.rangeText(), reading.isBelow() ? "낮아요" : "높아요"));
+        }
+        List<String> labels = outOfRange.stream().map(EnvReading::label).toList();
+        String joined = String.join(", ", labels.subList(0, labels.size() - 1)) + "와 " + labels.getLast();
+        return Optional.of("%s가 적정 범위를 벗어났어요".formatted(joined));
     }
 
     public static String refusalMessage(AlertRules rules) {
