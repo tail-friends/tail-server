@@ -95,6 +95,14 @@ public class Animal extends BaseTimeEntity {
         this.home = home;
     }
 
+    /**
+     * 쿨링 기간을 정한다. coolingEnd가 null이면 끝나는 날 없이 계속이다. 둘 다 null이면 쿨링을 끈다.
+     */
+    public void changeCooling(LocalDate coolingStart, LocalDate coolingEnd) {
+        this.coolingStart = coolingStart;
+        this.coolingEnd = coolingEnd;
+    }
+
     public void changeSpecies(Species species, String speciesName) {
         this.species = species;
         this.speciesName = speciesName;
