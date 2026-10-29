@@ -14,6 +14,7 @@ import com.tailfriends.log.dto.LogBatchRequest.Item;
 import com.tailfriends.log.dto.LogBatchResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.point.service.PointService;
 import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -50,9 +51,12 @@ public class LogBatchService {
     private final UserRepository userRepository;
     private final HealthAlertService healthAlertService;
     private final ScheduleService scheduleService;
+    private final PointService pointService;
     private final Clock clock;
 
     /**
+     * 케어 포인트는 한 건씩 기록할 때와 같이 개체마다 하루 한 번 적립한다. 되돌려도 빼지 않는다.
+     *
      * @throws BusinessException 지원하지 않는 종류·미래 날짜·같은 개체나 clientId가 두 번이면 INVALID_INPUT,
      *                           내 개체가 아니면 ANIMAL_NOT_FOUND, 이미 저장된 clientId가 있으면 DUPLICATE_CLIENT_ID
      */
@@ -72,6 +76,7 @@ public class LogBatchService {
         logs.stream()
                 .filter(log -> Boolean.TRUE.equals(log.getDusted()))
                 .forEach(log -> scheduleService.completeDusting(userId, log.getAnimal().getId(), log.getLogDate()));
+        logs.forEach(pointService::earnForLog);
         animals.values().forEach(animal -> healthAlertService.evaluate(animal, request.type()));
         return new LogBatchResponse(batchId, logs.stream().map(Log::getId).toList(), undoUntil(logs));
     }

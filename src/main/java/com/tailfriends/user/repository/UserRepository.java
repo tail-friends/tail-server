@@ -7,6 +7,7 @@ import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,4 +28,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("select u.role from User u where u.id = :id")
     Optional<Role> findRoleById(@Param("id") Long id);
+
+    /**
+     * 케어 포인트 잔액에 더한다(쓰면 음수). 읽고 쓰지 않고 한 문장으로 더해서, 동시에 적립해도 잔액이 맞는다.
+     */
+    @Modifying
+    @Query("update User u set u.points = u.points + :amount where u.id = :id")
+    int addPoints(@Param("id") Long id, @Param("amount") int amount);
 }

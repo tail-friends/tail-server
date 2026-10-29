@@ -4,6 +4,8 @@ import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.domain.FeedSchedule;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
+import com.tailfriends.animal.dto.AnimalHomeRequest;
+import com.tailfriends.animal.dto.AnimalHomeResponse;
 import com.tailfriends.animal.dto.AnimalListResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalSummaryResponse;
@@ -108,6 +110,17 @@ public class AnimalService {
                 request.feedIntervalDays(),
                 request.memo());
         return toResponse(animal);
+    }
+
+    /**
+     * 평소 사육장을 바꾼다. 없거나 남의 개체면 ANIMAL_NOT_FOUND.
+     */
+    @Transactional
+    public AnimalHomeResponse changeHome(Long animalId, AnimalHomeRequest request) {
+        Long userId = currentUser.id();
+        Animal animal = findAnimal(userId, animalId);
+        animal.changeHome(request.home());
+        return AnimalHomeResponse.from(animal.getHome());
     }
 
     /**

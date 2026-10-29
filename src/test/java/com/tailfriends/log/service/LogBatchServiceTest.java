@@ -22,6 +22,7 @@ import com.tailfriends.log.dto.LogBatchRequest.Item;
 import com.tailfriends.log.dto.LogBatchResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.point.service.PointService;
 import com.tailfriends.schedule.service.ScheduleService;
 import com.tailfriends.user.repository.UserRepository;
 import java.math.BigDecimal;
@@ -51,8 +52,9 @@ class LogBatchServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final HealthAlertService healthAlertService = mock(HealthAlertService.class);
     private final ScheduleService scheduleService = mock(ScheduleService.class);
+    private final PointService pointService = mock(PointService.class);
     private final LogBatchService service = new LogBatchService(CurrentUserStub.of(USER_ID), logRepository,
-            animalRepository, userRepository, healthAlertService, scheduleService, CLOCK);
+            animalRepository, userRepository, healthAlertService, scheduleService, pointService, CLOCK);
 
     private final Animal mango = animal(12L);
     private final Animal choco = animal(15L);

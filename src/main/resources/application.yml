@@ -23,6 +23,9 @@ spring:
     time-zone: UTC
     serialization:
       write-dates-as-timestamps: false
+    # enum에 숫자를 보내면 순서로 바꾸지 않고 400 INVALID_INPUT ("home": 3이 NIGHT가 되지 않게)
+    deserialization:
+      fail-on-numbers-for-enums: true
 
   flyway:
     enabled: true

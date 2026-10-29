@@ -25,6 +25,9 @@ import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.domain.Stool;
 import com.tailfriends.log.repository.LogRepository;
+import com.tailfriends.species.domain.Home;
+import com.tailfriends.species.domain.Shape;
+import com.tailfriends.species.domain.Species;
 import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
@@ -153,6 +156,75 @@ class HealthAlertServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ALERT_NOT_FOUND);
+    }
+
+    @Test
+    void 최근_온습도_기록이_종의_범위를_벗어나면_환경_경고를_만든다() {
+        Animal gecko = animalOf(species());
+        given(logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(ANIMAL_ID, LogType.ENV))
+                .willReturn(Optional.of(envLog(gecko, "29.0", "24.0", 35)));
+        given(alertRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 80L));
+
+        List<AlertResponse> alerts = service.evaluate(gecko, LogType.ENV);
+
+        assertThat(alerts).extracting(AlertResponse::type).containsExactly(AlertType.ENV_WARNING);
+        assertThat(alerts.getFirst().message()).isEqualTo("핫존 온도가 적정 범위(31~35℃)보다 낮아요");
+    }
+
+    @Test
+    void 온습도가_범위_안이면_환경_경고를_만들지_않는다() {
+        Animal gecko = animalOf(species());
+        given(logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(ANIMAL_ID, LogType.ENV))
+                .willReturn(Optional.of(envLog(gecko, "32.0", "24.0", 35)));
+
+        assertThat(service.evaluate(gecko, LogType.ENV)).isEmpty();
+        verify(alertRepository, never()).save(any());
+    }
+
+    @Test
+    void 목록에_없는_종은_환경_경고를_판정하지_않는다() {
+        assertThat(service.evaluate(animal(), LogType.ENV)).isEmpty();
+        verify(logRepository, never()).findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(any(), eq(LogType.ENV));
+    }
+
+    @Test
+    void 환경_경고가_열려_있으면_새로_만들지_않는다() {
+        Animal gecko = animalOf(species());
+        given(logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(ANIMAL_ID, LogType.ENV))
+                .willReturn(Optional.of(envLog(gecko, "40.0", "24.0", 35)));
+        given(alertRepository.existsByAnimalIdAndTypeAndStatus(ANIMAL_ID, AlertType.ENV_WARNING, AlertStatus.OPEN))
+                .willReturn(true);
+
+        assertThat(service.evaluate(gecko, LogType.ENV)).isEmpty();
+        verify(alertRepository, never()).save(any());
+    }
+
+    private static Log envLog(Animal animal, String hot, String cool, Integer humidity) {
+        return Log.create(animal, null, null, LogType.ENV, LocalDate.of(2026, 10, 19), null,
+                new LogDetails(null, null, null, null, null, null, null,
+                        null, null, new BigDecimal(hot), new BigDecimal(cool), humidity));
+    }
+
+    // 범위는 테스트용 값이다
+    private static Species species() {
+        return Species.builder()
+                .name("레오파드 게코")
+                .shape(Shape.GECKO)
+                .feedIntervalDays(4)
+                .hotMin(new BigDecimal("31.0"))
+                .hotMax(new BigDecimal("35.0"))
+                .coolMin(new BigDecimal("22.0"))
+                .coolMax(new BigDecimal("26.0"))
+                .humidityMin(30)
+                .humidityMax(40)
+                .defaultHome(Home.DESERT)
+                .build();
+    }
+
+    private static Animal animalOf(Species species) {
+        Animal animal = animal();
+        ReflectionTestUtils.setField(animal, "species", species);
+        return animal;
     }
 
     private static Log weightLog(LocalDate date, String weight) {

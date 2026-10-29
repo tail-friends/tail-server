@@ -52,13 +52,14 @@ class LogControllerTest {
     @Test
     @WithMockUserId(7L)
     void 기록을_작성하면_201과_ID를_돌려준다() throws Exception {
-        given(logService.create(any())).willReturn(new LogCreateResponse(902L, List.of(),
+        given(logService.create(any())).willReturn(new LogCreateResponse(902L, 10, List.of(),
                 new FeedResponse(FeedStatus.UPCOMING, LocalDate.of(2026, 10, 18), LocalDate.of(2026, 10, 22), 2)));
 
         mockMvc.perform(post("/api/v1/logs").contentType(MediaType.APPLICATION_JSON).content(FEED_BODY))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(902))
+                .andExpect(jsonPath("$.data.pointsEarned").value(10))
                 .andExpect(jsonPath("$.data.newAlerts").isArray())
                 .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
                 .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-22"));
