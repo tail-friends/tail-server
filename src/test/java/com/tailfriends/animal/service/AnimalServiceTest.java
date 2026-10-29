@@ -10,11 +10,14 @@ import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.domain.Sex;
+import com.tailfriends.animal.dto.AnimalCoolingRequest;
+import com.tailfriends.animal.dto.AnimalCoolingResponse;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalHomeRequest;
 import com.tailfriends.animal.dto.AnimalHomeResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
+import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
@@ -161,6 +164,67 @@ class AnimalServiceTest {
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
+    }
+
+    @Test
+    void 쿨링_기간을_정하면_그대로_돌려주고_종료일이_없으면_계속이다() {
+        Animal animal = animal();
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+
+        AnimalCoolingResponse response = animalService.changeCooling(12L,
+                new AnimalCoolingRequest(LocalDate.of(2026, 12, 1), LocalDate.of(2027, 2, 15)));
+        assertThat(response.cooling()).isEqualTo(
+                new CoolingResponse(LocalDate.of(2026, 12, 1), LocalDate.of(2027, 2, 15)));
+
+        AnimalCoolingResponse endless = animalService.changeCooling(12L,
+                new AnimalCoolingRequest(LocalDate.of(2026, 12, 1), null));
+        assertThat(endless.cooling().endDate()).isNull();
+        assertThat(animal.getCoolingEnd()).isNull();
+    }
+
+    @Test
+    void 시작일을_비워_보내면_쿨링을_끄고_null을_돌려준다() {
+        Animal animal = animal();
+        animal.changeCooling(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 12, 31));
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+
+        AnimalCoolingResponse response = animalService.changeCooling(12L, new AnimalCoolingRequest(null, null));
+
+        assertThat(response.cooling()).isNull();
+        assertThat(animal.getCoolingStart()).isNull();
+        assertThat(animal.getCoolingEnd()).isNull();
+    }
+
+    @Test
+    void 종료일이_시작일보다_빠르거나_종료일만_보내면_쿨링을_바꾸지_않는다() {
+        Animal animal = animal();
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+
+        assertInvalidInput(() -> animalService.changeCooling(12L,
+                new AnimalCoolingRequest(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 11, 30))));
+        assertInvalidInput(() -> animalService.changeCooling(12L,
+                new AnimalCoolingRequest(null, LocalDate.of(2026, 12, 31))));
+        assertThat(animal.getCoolingStart()).isNull();
+    }
+
+    @Test
+    void 시작일과_종료일이_같은_하루짜리_쿨링도_된다() {
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal()));
+
+        AnimalCoolingResponse response = animalService.changeCooling(12L,
+                new AnimalCoolingRequest(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 1)));
+
+        assertThat(response.cooling().startDate()).isEqualTo(response.cooling().endDate());
+    }
+
+    @Test
+    void 남의_개체나_없는_개체의_쿨링은_바꾸지_않는다() {
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> animalService.changeCooling(12L, new AnimalCoolingRequest(null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
