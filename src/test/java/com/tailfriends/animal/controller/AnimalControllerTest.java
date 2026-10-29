@@ -98,6 +98,7 @@ class AnimalControllerTest {
                 new WeightSummaryResponse(new BigDecimal("57.8"), new BigDecimal("2.8")),
                 new CharacterSummaryResponse("gecko", "spots",
                         new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert"),
+                null,
                 List.of(new AlertResponse(77L, 12L, AlertType.WEIGHT_LOSS_ALERT, "최근 30일 동안 체중이 12% 줄었어요",
                         AlertStatus.OPEN, Instant.parse("2026-10-18T09:00:00Z"))),
                 Mood.UNWELL));
@@ -112,6 +113,7 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.feed.status").value("UPCOMING"))
                 .andExpect(jsonPath("$.data.feed.lastDate").value("2026-10-14"))
                 .andExpect(jsonPath("$.data.feed.nextDate").value("2026-10-18"))
+                .andExpect(jsonPath("$.data.cooling").isEmpty())
                 .andExpect(jsonPath("$.data.alerts[0].type").value("WEIGHT_LOSS_ALERT"))
                 .andExpect(jsonPath("$.data.alerts[0].createdAt").value("2026-10-18T09:00:00Z"))
                 .andExpect(jsonPath("$.data.shed.lastDate").value("2026-09-22"))
