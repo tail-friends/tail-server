@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,12 +17,15 @@ import com.tailfriends.animal.domain.FeedStatus;
 import com.tailfriends.animal.domain.Mood;
 import com.tailfriends.animal.domain.Sex;
 import com.tailfriends.animal.domain.ShedSummary;
+import com.tailfriends.animal.dto.AnimalCoolingRequest;
+import com.tailfriends.animal.dto.AnimalCoolingResponse;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalHomeRequest;
 import com.tailfriends.animal.dto.AnimalHomeResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.CharacterResponse;
 import com.tailfriends.animal.dto.CharacterSummaryResponse;
+import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.dto.FeedResponse;
 import com.tailfriends.animal.dto.WeightSummaryResponse;
 import com.tailfriends.animal.service.AnimalService;
@@ -187,6 +191,42 @@ class AnimalControllerTest {
                         .content("{ \"home\": \"forest\" }"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("ANIMAL_NOT_FOUND"));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 쿨링_기간을_정하면_기간을_돌려준다() throws Exception {
+        given(animalService.changeCooling(eq(12L), any())).willReturn(new AnimalCoolingResponse(
+                new CoolingResponse(LocalDate.of(2026, 12, 1), LocalDate.of(2027, 2, 15))));
+
+        mockMvc.perform(put("/api/v1/animals/12/cooling").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"startDate\": \"2026-12-01\", \"endDate\": \"2027-02-15\" }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cooling.startDate").value("2026-12-01"))
+                .andExpect(jsonPath("$.data.cooling.endDate").value("2027-02-15"));
+
+        verify(animalService).changeCooling(12L,
+                new AnimalCoolingRequest(LocalDate.of(2026, 12, 1), LocalDate.of(2027, 2, 15)));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 쿨링을_끄면_cooling이_null이다() throws Exception {
+        given(animalService.changeCooling(eq(12L), any())).willReturn(new AnimalCoolingResponse(null));
+
+        mockMvc.perform(put("/api/v1/animals/12/cooling").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"startDate\": null, \"endDate\": null }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cooling").isEmpty());
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 쿨링_날짜_형식이_틀리면_400() throws Exception {
+        mockMvc.perform(put("/api/v1/animals/12/cooling").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"startDate\": \"12월 1일\" }"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
     }
 
     @Test
