@@ -29,6 +29,7 @@ public enum ErrorCode {
     PHOTO_NOT_FOUND(HttpStatus.NOT_FOUND, "사진을 찾을 수 없어요"),
     SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "일정을 찾을 수 없어요"),
     BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "일괄 기록을 찾을 수 없어요"),
+    VISIT_NOT_FOUND(HttpStatus.NOT_FOUND, "진료 기록을 찾을 수 없어요"),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식이에요"),
