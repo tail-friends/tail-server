@@ -1,5 +1,7 @@
 package com.tailfriends.animal.controller;
 
+import com.tailfriends.animal.dto.AnimalCoolingRequest;
+import com.tailfriends.animal.dto.AnimalCoolingResponse;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalHomeRequest;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -63,6 +66,14 @@ public class AnimalController {
     public ApiResponse<AnimalHomeResponse> changeHome(@PathVariable Long animalId,
                                                       @Valid @RequestBody AnimalHomeRequest request) {
         return ApiResponse.success(animalService.changeHome(animalId, request));
+    }
+
+    @Operation(summary = "쿨링(휴면) 모드 설정",
+            description = "startDate가 null이면 즉시 끝낸다. endDate가 null이면 끝나는 날 없이 계속. 기간 중에는 급여 알림·거식·환경 경고를 멈춘다.")
+    @PutMapping("/{animalId}/cooling")
+    public ApiResponse<AnimalCoolingResponse> changeCooling(@PathVariable Long animalId,
+                                                            @RequestBody AnimalCoolingRequest request) {
+        return ApiResponse.success(animalService.changeCooling(animalId, request));
     }
 
     @Operation(summary = "개체 삭제", description = "본문 없이 204.")

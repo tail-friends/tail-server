@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * 개체 상세. alerts는 열린(OPEN) 건강 경고, 최신순. character는 저장한 캐릭터가 없으면 null.
- * 명세의 cooling은 쿨링 모드 설정이 생기면 추가한다.
+ * cooling은 정해 둔 쿨링 기간이고, 정하지 않았으면 null.
  */
 public record AnimalResponse(
         Long id,
@@ -27,6 +27,7 @@ public record AnimalResponse(
         ShedSummary shed,
         WeightSummaryResponse weight,
         CharacterSummaryResponse character,
+        CoolingResponse cooling,
         List<AlertResponse> alerts,
         Mood mood
 ) {
@@ -45,6 +46,7 @@ public record AnimalResponse(
                 status.shed(),
                 status.weight(),
                 status.character(),
+                CoolingResponse.of(animal),
                 alerts,
                 status.mood());
     }

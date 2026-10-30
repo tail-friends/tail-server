@@ -180,11 +180,12 @@ public class HealthAlertService {
 
     /**
      * 가장 최근 온습도 기록을 종의 적정 범위와 비교한다. 핫존은 바닥 표면 온도다.
-     * 목록에 없는 종(직접 입력)은 범위가 없어 판정하지 않는다.
+     * 목록에 없는 종(직접 입력)은 범위가 없어 판정하지 않는다. 쿨링 기간에는 일부러 온도를 낮추므로 판정하지 않는다.
      */
     private Optional<HealthAlert> judgeEnv(Animal animal) {
         Species species = animal.getSpecies();
-        if (species == null) {
+        if (species == null
+                || FeedSchedule.isCooling(animal.getCoolingStart(), animal.getCoolingEnd(), KstDate.today(clock))) {
             return Optional.empty();
         }
         Optional<Log> latest = logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(

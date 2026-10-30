@@ -2,6 +2,8 @@ package com.tailfriends.animal.service;
 
 import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.domain.FeedSchedule;
+import com.tailfriends.animal.dto.AnimalCoolingRequest;
+import com.tailfriends.animal.dto.AnimalCoolingResponse;
 import com.tailfriends.animal.dto.AnimalCreateRequest;
 import com.tailfriends.animal.dto.AnimalCreateResponse;
 import com.tailfriends.animal.dto.AnimalHomeRequest;
@@ -10,6 +12,7 @@ import com.tailfriends.animal.dto.AnimalListResponse;
 import com.tailfriends.animal.dto.AnimalResponse;
 import com.tailfriends.animal.dto.AnimalSummaryResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
+import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
@@ -121,6 +124,26 @@ public class AnimalService {
         Animal animal = findAnimal(userId, animalId);
         animal.changeHome(request.home());
         return AnimalHomeResponse.from(animal.getHome());
+    }
+
+    /**
+     * 쿨링 기간을 정한다. startDate가 null이면 즉시 끝낸다(두 날짜를 지운다).
+     *
+     * @throws BusinessException 종료일이 시작일보다 빠르거나 startDate 없이 endDate만 보내면 INVALID_INPUT,
+     *                           없거나 남의 개체면 ANIMAL_NOT_FOUND
+     */
+    @Transactional
+    public AnimalCoolingResponse changeCooling(Long animalId, AnimalCoolingRequest request) {
+        Long userId = currentUser.id();
+        Animal animal = findAnimal(userId, animalId);
+        if (request.startDate() == null && request.endDate() != null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "쿨링 시작일 없이 종료일만 정할 수 없어요");
+        }
+        if (request.endDate() != null && request.endDate().isBefore(request.startDate())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "쿨링 종료일이 시작일보다 빨라요");
+        }
+        animal.changeCooling(request.startDate(), request.endDate());
+        return new AnimalCoolingResponse(CoolingResponse.of(animal));
     }
 
     /**

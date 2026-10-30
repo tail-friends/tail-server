@@ -188,6 +188,17 @@ class HealthAlertServiceTest {
     }
 
     @Test
+    void 쿨링_기간에는_온도가_낮아도_환경_경고를_만들지_않는다() {
+        Animal cooling = animalOf(species());
+        ReflectionTestUtils.setField(cooling, "coolingStart", LocalDate.of(2026, 10, 1));
+        given(logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(ANIMAL_ID, LogType.ENV))
+                .willReturn(Optional.of(envLog(cooling, "20.0", "15.0", 35)));
+
+        assertThat(service.evaluate(cooling, LogType.ENV)).isEmpty();
+        verify(alertRepository, never()).save(any());
+    }
+
+    @Test
     void 환경_경고가_열려_있으면_새로_만들지_않는다() {
         Animal gecko = animalOf(species());
         given(logRepository.findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(ANIMAL_ID, LogType.ENV))
