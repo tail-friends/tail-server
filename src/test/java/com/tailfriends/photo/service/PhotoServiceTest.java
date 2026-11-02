@@ -17,6 +17,7 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
+import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
@@ -56,6 +57,9 @@ class PhotoServiceTest {
     private AnimalRepository animalRepository;
 
     @Mock
+    private LogRepository logRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -82,7 +86,7 @@ class PhotoServiceTest {
     void 현재_사용자() {
         given(currentUser.id()).willReturn(1L);
         lenient().when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
-        photoService = new PhotoService(currentUser, photoRepository, animalRepository, userRepository, photoStorage,
+        photoService = new PhotoService(currentUser, photoRepository, animalRepository, logRepository, userRepository, photoStorage,
                 imageResizer, consentService, new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
     }
 
