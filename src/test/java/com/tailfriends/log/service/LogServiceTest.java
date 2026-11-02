@@ -18,6 +18,7 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.health.service.HealthAlertService;
+import com.tailfriends.inventory.service.InventoryService;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogDetails;
 import com.tailfriends.log.domain.LogType;
@@ -56,9 +57,10 @@ class LogServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ScheduleService scheduleService = mock(ScheduleService.class);
     private final PointService pointService = mock(PointService.class);
+    private final InventoryService inventoryService = mock(InventoryService.class);
     private final LogService logService = new LogService(CurrentUserStub.of(USER_ID), logRepository, animalRepository,
             userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class), scheduleService,
-            pointService, CLOCK);
+            pointService, inventoryService, CLOCK);
 
     @Test
     void 기록일은_한국_날짜로_오늘까지_허용한다() {

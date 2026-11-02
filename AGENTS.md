@@ -120,6 +120,7 @@ com.tailfriends
 ├─ health    건강 경고
 ├─ schedule  반복 일정
 ├─ point     케어 포인트 (적립, 내역)
+├─ inventory 먹이 재고
 ├─ today     오늘 할 일 (여러 도메인을 모아 보여주기만 한다)
 └─ admin     관리자
 ```

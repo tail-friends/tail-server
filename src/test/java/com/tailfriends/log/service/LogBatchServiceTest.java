@@ -15,6 +15,7 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.health.service.HealthAlertService;
+import com.tailfriends.inventory.service.InventoryService;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogBatchRequest;
@@ -53,8 +54,9 @@ class LogBatchServiceTest {
     private final HealthAlertService healthAlertService = mock(HealthAlertService.class);
     private final ScheduleService scheduleService = mock(ScheduleService.class);
     private final PointService pointService = mock(PointService.class);
+    private final InventoryService inventoryService = mock(InventoryService.class);
     private final LogBatchService service = new LogBatchService(CurrentUserStub.of(USER_ID), logRepository,
-            animalRepository, userRepository, healthAlertService, scheduleService, pointService, CLOCK);
+            animalRepository, userRepository, healthAlertService, scheduleService, pointService, inventoryService, CLOCK);
 
     private final Animal mango = animal(12L);
     private final Animal choco = animal(15L);

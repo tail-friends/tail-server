@@ -10,6 +10,7 @@ import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.health.dto.AlertResponse;
 import com.tailfriends.health.service.HealthAlertService;
+import com.tailfriends.inventory.service.InventoryService;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogCreateRequest;
@@ -44,11 +45,13 @@ public class LogService {
     private final HealthAlertService healthAlertService;
     private final ScheduleService scheduleService;
     private final PointService pointService;
+    private final InventoryService inventoryService;
     private final Clock clock;
 
     /**
      * 같은 사용자가 같은 clientId로 다시 보내면 저장하지 않고 409와 기존 기록 ID를 돌려준다. (오프라인 재전송)
      * 더스팅한 급여 기록이면 더스팅 일정을 자동 완료한다. 케어 포인트는 개체·종류별로 하루 한 번 적립한다.
+     * 급여 기록이면 같은 이름의 먹이 재고에서 개수만큼 뺀다.
      */
     @Transactional
     public LogCreateResponse create(LogCreateRequest request) {
@@ -72,6 +75,7 @@ public class LogService {
                 request.toDetails()));
         completeDustingIfDusted(userId, log);
         int pointsEarned = pointService.earnForLog(log);
+        inventoryService.deductForFeed(log);
         List<AlertResponse> newAlerts = healthAlertService.evaluate(animal, log.getType());
         return new LogCreateResponse(log.getId(), pointsEarned, newAlerts,
                 FeedResponse.from(feedService.scheduleOf(animal)));
