@@ -3,6 +3,7 @@ package com.tailfriends.breeding.service;
 import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.breeding.domain.Breeding;
+import com.tailfriends.breeding.domain.BreedingStatus;
 import com.tailfriends.breeding.domain.Clutch;
 import com.tailfriends.breeding.dto.BreedingCreateRequest;
 import com.tailfriends.breeding.dto.BreedingCreateResponse;
@@ -11,6 +12,8 @@ import com.tailfriends.breeding.dto.BreedingResponse;
 import com.tailfriends.breeding.dto.BreedingUpdateRequest;
 import com.tailfriends.breeding.dto.ClutchRequest;
 import com.tailfriends.breeding.dto.ClutchResponse;
+import com.tailfriends.breeding.dto.HatchlingsCreateRequest;
+import com.tailfriends.breeding.dto.HatchlingsCreateResponse;
 import com.tailfriends.breeding.repository.BreedingRepository;
 import com.tailfriends.breeding.repository.ClutchRepository;
 import com.tailfriends.global.exception.BusinessException;
@@ -113,6 +116,40 @@ public class BreedingService {
     @Transactional
     public void delete(Long breedingId) {
         breedingRepository.delete(findBreeding(currentUser.id(), breedingId));
+    }
+
+    /**
+     * 태어난 새끼를 개체로 한 번에 등록하고 상태를 HATCHED로 바꾼다. 종·급여 주기는 어미 개체를 따르고,
+     * 어미가 외부 개체(또는 지운 개체)면 아빠 개체를 따른다. 여러 번 나눠 등록할 수 있다.
+     * 무료 개체 수 제한(ANIMAL_LIMIT_EXCEEDED)은 개체 등록과 같이 범위가 정해지면 검사한다.
+     *
+     * @throws BusinessException 부모가 모두 내 개체가 아니거나 해칭일이 메이팅일 전·오늘 이후면 INVALID_INPUT,
+     *                           없거나 남의 번식 기록이면 BREEDING_NOT_FOUND
+     */
+    @Transactional
+    public HatchlingsCreateResponse registerHatchlings(Long breedingId, HatchlingsCreateRequest request) {
+        Breeding breeding = findBreeding(currentUser.id(), breedingId);
+        if (!isBetweenPairedDateAndToday(breeding, request.hatchDate())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "해칭일은 메이팅일부터 오늘까지만 적을 수 있어요");
+        }
+        Animal parent = breeding.getFemale() != null ? breeding.getFemale() : breeding.getMale();
+        if (parent == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "부모가 모두 외부 개체라 종을 정할 수 없어요");
+        }
+        List<Animal> hatchlings = animalRepository.saveAll(request.hatchlings().stream()
+                .map(hatchling -> Animal.builder()
+                        .user(breeding.getUser())
+                        .species(parent.getSpecies())
+                        .speciesName(parent.getSpeciesName())
+                        .name(hatchling.name().strip())
+                        .morph(hatchling.morph())
+                        .hatchDate(request.hatchDate())
+                        .feedIntervalDays(parent.getFeedIntervalDays())
+                        .breedingId(breeding.getId())
+                        .build())
+                .toList());
+        breeding.changeStatus(BreedingStatus.HATCHED);
+        return new HatchlingsCreateResponse(hatchlings.stream().map(Animal::getId).toList());
     }
 
     private void validateClutch(Breeding breeding, ClutchRequest clutch) {
