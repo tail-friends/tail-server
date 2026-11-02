@@ -86,8 +86,9 @@ class PhotoServiceTest {
     void 현재_사용자() {
         given(currentUser.id()).willReturn(1L);
         lenient().when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
-        photoService = new PhotoService(currentUser, photoRepository, animalRepository, logRepository, userRepository, photoStorage,
-                imageResizer, consentService, new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
+        photoService = new PhotoService(currentUser, photoRepository, animalRepository, logRepository, userRepository,
+                photoStorage, imageResizer, consentService,
+                new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
     }
 
     @Test
