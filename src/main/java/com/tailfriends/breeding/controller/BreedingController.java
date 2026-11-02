@@ -5,6 +5,8 @@ import com.tailfriends.breeding.dto.BreedingCreateResponse;
 import com.tailfriends.breeding.dto.BreedingListResponse;
 import com.tailfriends.breeding.dto.BreedingResponse;
 import com.tailfriends.breeding.dto.BreedingUpdateRequest;
+import com.tailfriends.breeding.dto.HatchlingsCreateRequest;
+import com.tailfriends.breeding.dto.HatchlingsCreateResponse;
 import com.tailfriends.breeding.service.BreedingService;
 import com.tailfriends.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,5 +60,15 @@ public class BreedingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long breedingId) {
         breedingService.delete(breedingId);
+    }
+
+    @Operation(summary = "해칭 개체 등록",
+            description = "새끼를 개체로 한 번에 등록한다(50마리까지). 종·급여 주기는 어미, 어미가 외부 개체면 아빠를 따른다. "
+                    + "등록하면 상태가 HATCHED가 된다.")
+    @PostMapping("/{breedingId}/hatchlings")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<HatchlingsCreateResponse> registerHatchlings(
+            @PathVariable Long breedingId, @Valid @RequestBody HatchlingsCreateRequest request) {
+        return ApiResponse.success(breedingService.registerHatchlings(breedingId, request));
     }
 }
