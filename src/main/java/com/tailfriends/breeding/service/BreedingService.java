@@ -107,6 +107,14 @@ public class BreedingService {
         return toResponses(List.of(breeding)).getFirst();
     }
 
+    /**
+     * 산란 기록은 DB의 ON DELETE CASCADE로 함께 지워지고, 해칭 개체는 남는다(breeding_id만 NULL).
+     */
+    @Transactional
+    public void delete(Long breedingId) {
+        breedingRepository.delete(findBreeding(currentUser.id(), breedingId));
+    }
+
     private void validateClutch(Breeding breeding, ClutchRequest clutch) {
         if (!isBetweenPairedDateAndToday(breeding, clutch.laidDate())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "산란일은 메이팅일부터 오늘까지만 적을 수 있어요");
