@@ -1,10 +1,12 @@
 package com.tailfriends.photo.repository;
 
 import com.tailfriends.photo.domain.Photo;
+import com.tailfriends.photo.domain.PhotoPurpose;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,6 +36,17 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
     List<PhotoFileKeys> findFileKeysByAnimalId(@Param("animalId") Long animalId);
 
     List<Photo> findAllByUserIdAndOriginalKeyNotNull(Long userId);
+
+    /**
+     * 성장 앨범. 개체의 사진 중 purposes에 든 것만, 최신순. before보다 작은 ID만 돌려준다(커서).
+     */
+    @Query("""
+            select p from Photo p
+            where p.animal.id = :animalId and p.purpose in :purposes and p.id < :before
+            order by p.id desc
+            """)
+    List<Photo> findAlbumPage(@Param("animalId") Long animalId, @Param("purposes") Collection<PhotoPurpose> purposes,
+                              @Param("before") long before, Pageable limit);
 
     /**
      * 개체들의 캐릭터용 사진 썸네일, 최신순. 개체마다 첫 번째가 가장 최근 사진이다.
