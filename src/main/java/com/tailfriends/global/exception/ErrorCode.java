@@ -31,6 +31,7 @@ public enum ErrorCode {
     BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "일괄 기록을 찾을 수 없어요"),
     VISIT_NOT_FOUND(HttpStatus.NOT_FOUND, "진료 기록을 찾을 수 없어요"),
     INVENTORY_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "먹이 재고 품목을 찾을 수 없어요"),
+    BREEDING_NOT_FOUND(HttpStatus.NOT_FOUND, "번식 기록을 찾을 수 없어요"),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식이에요"),
