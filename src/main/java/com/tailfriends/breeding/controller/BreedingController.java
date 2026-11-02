@@ -3,6 +3,8 @@ package com.tailfriends.breeding.controller;
 import com.tailfriends.breeding.dto.BreedingCreateRequest;
 import com.tailfriends.breeding.dto.BreedingCreateResponse;
 import com.tailfriends.breeding.dto.BreedingListResponse;
+import com.tailfriends.breeding.dto.BreedingResponse;
+import com.tailfriends.breeding.dto.BreedingUpdateRequest;
 import com.tailfriends.breeding.service.BreedingService;
 import com.tailfriends.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,5 +42,13 @@ public class BreedingController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BreedingCreateResponse> create(@Valid @RequestBody BreedingCreateRequest request) {
         return ApiResponse.success(breedingService.create(request));
+    }
+
+    @Operation(summary = "번식 기록 수정 (산란·인큐베이션)",
+            description = "보낸 필드만 바꾼다. clutches를 보내면 산란 기록을 통째로 바꾸고, 빈 배열이면 모두 지운다.")
+    @PatchMapping("/{breedingId}")
+    public ApiResponse<BreedingResponse> update(@PathVariable Long breedingId,
+                                                @Valid @RequestBody BreedingUpdateRequest request) {
+        return ApiResponse.success(breedingService.update(breedingId, request));
     }
 }
