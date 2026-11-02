@@ -3,10 +3,13 @@ package com.tailfriends.breeding.service;
 import com.tailfriends.animal.domain.Animal;
 import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.breeding.domain.Breeding;
+import com.tailfriends.breeding.domain.Clutch;
 import com.tailfriends.breeding.dto.BreedingCreateRequest;
 import com.tailfriends.breeding.dto.BreedingCreateResponse;
 import com.tailfriends.breeding.dto.BreedingListResponse;
 import com.tailfriends.breeding.dto.BreedingResponse;
+import com.tailfriends.breeding.dto.BreedingUpdateRequest;
+import com.tailfriends.breeding.dto.ClutchRequest;
 import com.tailfriends.breeding.dto.ClutchResponse;
 import com.tailfriends.breeding.repository.BreedingRepository;
 import com.tailfriends.breeding.repository.ClutchRepository;
@@ -74,6 +77,52 @@ public class BreedingService {
                 .memo(request.memo())
                 .build());
         return new BreedingCreateResponse(breeding.getId());
+    }
+
+    /**
+     * clutches를 보내면 날짜를 모두 확인한 뒤 기존 산란 기록을 지우고 보낸 목록으로 바꾼다. 상태는 순서와 관계없이 바꾼다.
+     *
+     * @throws BusinessException 산란일이 메이팅일 전이거나 오늘 이후, 예상 해칭일이 산란일 전이면 INVALID_INPUT,
+     *                           없거나 남의 번식 기록이면 BREEDING_NOT_FOUND
+     */
+    @Transactional
+    public BreedingResponse update(Long breedingId, BreedingUpdateRequest request) {
+        Breeding breeding = findBreeding(currentUser.id(), breedingId);
+        if (request.clutches() != null) {
+            request.clutches().forEach(clutch -> validateClutch(breeding, clutch));
+            clutchRepository.deleteAllByBreedingId(breeding.getId());
+            clutchRepository.saveAll(request.clutches().stream()
+                    .map(clutch -> Clutch.builder()
+                            .breeding(breeding)
+                            .laidDate(clutch.laidDate())
+                            .eggCount(clutch.eggCount())
+                            .incubationTemp(clutch.incubationTemp())
+                            .expectedHatchDate(clutch.expectedHatchDate())
+                            .build())
+                    .toList());
+        }
+        if (request.status() != null) {
+            breeding.changeStatus(request.status());
+        }
+        return toResponses(List.of(breeding)).getFirst();
+    }
+
+    private void validateClutch(Breeding breeding, ClutchRequest clutch) {
+        if (!isBetweenPairedDateAndToday(breeding, clutch.laidDate())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "산란일은 메이팅일부터 오늘까지만 적을 수 있어요");
+        }
+        if (clutch.expectedHatchDate() != null && clutch.expectedHatchDate().isBefore(clutch.laidDate())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "예상 해칭일은 산란일보다 빠를 수 없어요");
+        }
+    }
+
+    private boolean isBetweenPairedDateAndToday(Breeding breeding, LocalDate date) {
+        return !date.isBefore(breeding.getPairedDate()) && !date.isAfter(KstDate.today(clock));
+    }
+
+    private Breeding findBreeding(Long userId, Long breedingId) {
+        return breedingRepository.findByIdAndUserId(breedingId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BREEDING_NOT_FOUND));
     }
 
     /**
