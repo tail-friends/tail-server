@@ -43,6 +43,12 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     Optional<Log> findFirstByAnimalIdAndTypeOrderByLogDateDescIdDesc(Long animalId, LogType type);
 
     /**
+     * 그날까지(포함) 가장 최근 기록. 같은 날이면 나중에 적은 것.
+     */
+    Optional<Log> findFirstByAnimalIdAndTypeAndLogDateLessThanEqualOrderByLogDateDescIdDesc(
+            Long animalId, LogType type, LocalDate date);
+
+    /**
      * 기간 안 최고 체중. from, to 모두 포함.
      */
     @Query("""
