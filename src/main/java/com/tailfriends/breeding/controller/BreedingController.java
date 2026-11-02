@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,5 +51,12 @@ public class BreedingController {
     public ApiResponse<BreedingResponse> update(@PathVariable Long breedingId,
                                                 @Valid @RequestBody BreedingUpdateRequest request) {
         return ApiResponse.success(breedingService.update(breedingId, request));
+    }
+
+    @Operation(summary = "번식 기록 삭제", description = "본문 없이 204. 산란 기록도 지우고, 등록한 해칭 개체는 남긴다.")
+    @DeleteMapping("/{breedingId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long breedingId) {
+        breedingService.delete(breedingId);
     }
 }
