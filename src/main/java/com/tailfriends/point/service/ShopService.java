@@ -6,6 +6,8 @@ import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.point.domain.PointHistory;
 import com.tailfriends.point.domain.ShopItem;
 import com.tailfriends.point.domain.ShopItemCategory;
+import com.tailfriends.point.dto.MyItemListResponse;
+import com.tailfriends.point.dto.MyItemResponse;
 import com.tailfriends.point.dto.PurchaseResponse;
 import com.tailfriends.point.dto.ShopItemListResponse;
 import com.tailfriends.point.dto.ShopItemResponse;
@@ -69,5 +71,15 @@ public class ShopService {
         int balance = userRepository.findPointsById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
         return new PurchaseResponse(balance);
+    }
+
+    /**
+     * 산 아이템. 최근에 산 순서이고, 판매를 중지한 아이템도 나온다.
+     */
+    @Transactional(readOnly = true)
+    public MyItemListResponse getMyItems() {
+        return new MyItemListResponse(userItemRepository.findAllWithItemByUserId(currentUser.id()).stream()
+                .map(MyItemResponse::from)
+                .toList());
     }
 }
