@@ -4,13 +4,14 @@ import com.tailfriends.log.domain.LogType;
 import java.util.Optional;
 
 /**
- * 포인트 내역의 이유. 기록 적립은 종류마다 하나씩이다. PURCHASE는 상점이 생기면 추가한다.
+ * 포인트 내역의 이유. 기록 적립은 종류마다 하나씩이다. PURCHASE는 상점 아이템 구매(사용)다.
  */
 public enum PointReason {
     LOG_FEED,
     LOG_WEIGHT,
     LOG_SHED,
-    LOG_CLEAN;
+    LOG_CLEAN,
+    PURCHASE;
 
     /**
      * 적립하는 기록 종류면 그 이유. 온습도·메모는 적립하지 않는다.
