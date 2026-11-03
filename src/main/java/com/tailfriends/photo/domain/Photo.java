@@ -61,15 +61,19 @@ public class Photo extends BaseTimeEntity {
     @Column(precision = 7, scale = 1)
     private BigDecimal weightAtTime;
 
+    /**
+     * weightAtTime은 올린 날(KST)까지의 가장 최근 체중이다. 체중 기록이 없으면 null.
+     */
     @Builder
     private Photo(User user, Animal animal, PhotoPurpose purpose, String thumbnailKey, String originalKey,
-                  String analysisKey) {
+                  String analysisKey, BigDecimal weightAtTime) {
         this.user = user;
         this.animal = animal;
         this.purpose = purpose;
         this.thumbnailKey = thumbnailKey;
         this.originalKey = originalKey;
         this.analysisKey = analysisKey;
+        this.weightAtTime = weightAtTime;
     }
 
     /**

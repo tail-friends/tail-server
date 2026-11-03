@@ -17,6 +17,10 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
+import com.tailfriends.log.domain.Log;
+import com.tailfriends.log.domain.LogDetails;
+import com.tailfriends.log.domain.LogType;
+import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
@@ -27,8 +31,10 @@ import com.tailfriends.user.domain.ConsentType;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.service.ConsentService;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +60,9 @@ class PhotoServiceTest {
 
     @Mock
     private AnimalRepository animalRepository;
+
+    @Mock
+    private LogRepository logRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -82,8 +91,9 @@ class PhotoServiceTest {
     void 현재_사용자() {
         given(currentUser.id()).willReturn(1L);
         lenient().when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
-        photoService = new PhotoService(currentUser, photoRepository, animalRepository, userRepository, photoStorage,
-                imageResizer, consentService, new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
+        photoService = new PhotoService(currentUser, photoRepository, animalRepository, logRepository, userRepository,
+                photoStorage, imageResizer, consentService,
+                new StorageProperties("storage", "http://files", DAILY_LIMIT), CLOCK);
     }
 
     @Test
@@ -110,6 +120,32 @@ class PhotoServiceTest {
         photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
 
         verify(photoRepository).save(argThat((Photo photo) -> photo.getUser() == user));
+    }
+
+    @Test
+    void 오늘_한국_날짜까지의_가장_최근_체중을_함께_저장한다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(animal.getId()).willReturn(12L);
+        given(logRepository.findFirstByAnimalIdAndTypeAndLogDateLessThanEqualOrderByLogDateDescIdDesc(
+                12L, LogType.WEIGHT, LocalDate.of(2026, 10, 20)))
+                .willReturn(Optional.of(weightLog("57.8")));
+        given(imageResizer.toJpegs(BYTES, 128)).willReturn(List.of(new byte[] {9}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
+
+        verify(photoRepository).save(argThat((Photo photo) -> new BigDecimal("57.8").equals(photo.getWeightAtTime())));
+    }
+
+    @Test
+    void 체중_기록이_없으면_체중_없이_저장한다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(imageResizer.toJpegs(BYTES, 128)).willReturn(List.of(new byte[] {9}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        photoService.upload(12L, PhotoPurpose.ALBUM, false, FILE);
+
+        verify(photoRepository).save(argThat((Photo photo) -> photo.getWeightAtTime() == null));
     }
 
     @Test
@@ -225,5 +261,11 @@ class PhotoServiceTest {
         assertThatThrownBy(() -> photoService.upload(12L, PhotoPurpose.CHARACTER, false, empty))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_FILE);
+    }
+
+    private static Log weightLog(String weight) {
+        return Log.create(null, null, null, LogType.WEIGHT, LocalDate.of(2026, 10, 18), null,
+                new LogDetails(null, null, null, null, null, null, new BigDecimal(weight),
+                        null, null, null, null, null));
     }
 }

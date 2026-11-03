@@ -6,6 +6,9 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.log.domain.Log;
+import com.tailfriends.log.domain.LogType;
+import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
@@ -17,6 +20,7 @@ import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import com.tailfriends.user.service.ConsentService;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,6 +44,7 @@ public class PhotoService {
     private final CurrentUser currentUser;
     private final PhotoRepository photoRepository;
     private final AnimalRepository animalRepository;
+    private final LogRepository logRepository;
     private final UserRepository userRepository;
     private final PhotoStorage photoStorage;
     private final ImageResizer imageResizer;
@@ -91,12 +96,23 @@ public class PhotoService {
                     .thumbnailKey(thumbnailKey)
                     .originalKey(originalKey)
                     .analysisKey(analysisKey)
+                    .weightAtTime(latestWeight(animal))
                     .build());
             return new PhotoUploadResponse(photo.getId(), photoStorage.urlOf(thumbnailKey), originalKey != null);
         } catch (RuntimeException e) {
             savedKeys.forEach(this::deleteQuietly);
             throw e;
         }
+    }
+
+    /**
+     * 오늘(KST)까지의 가장 최근 체중(g). 성장 앨범에 찍은 날의 체중으로 보여준다. 체중 기록이 없으면 null.
+     */
+    private BigDecimal latestWeight(Animal animal) {
+        return logRepository.findFirstByAnimalIdAndTypeAndLogDateLessThanEqualOrderByLogDateDescIdDesc(
+                        animal.getId(), LogType.WEIGHT, KstDate.today(clock))
+                .map(Log::getWeightG)
+                .orElse(null);
     }
 
     /**
