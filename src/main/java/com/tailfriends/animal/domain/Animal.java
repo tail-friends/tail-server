@@ -77,9 +77,14 @@ public class Animal extends BaseTimeEntity {
 
     private LocalDate coolingEnd;
 
+    /**
+     * 해칭 개체 등록으로 만든 개체면 그 번식 기록 ID. 번식 기록을 지우면 null(DB ON DELETE SET NULL).
+     */
+    private Long breedingId;
+
     @Builder
     private Animal(User user, Species species, String speciesName, String name, String morph, Sex sex,
-                   LocalDate hatchDate, int feedIntervalDays, String memo) {
+                   LocalDate hatchDate, int feedIntervalDays, String memo, Long breedingId) {
         this.user = user;
         this.species = species;
         this.speciesName = speciesName;
@@ -89,6 +94,7 @@ public class Animal extends BaseTimeEntity {
         this.hatchDate = hatchDate;
         this.feedIntervalDays = feedIntervalDays;
         this.memo = memo;
+        this.breedingId = breedingId;
     }
 
     public void changeHome(Home home) {
