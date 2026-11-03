@@ -3,7 +3,10 @@ package com.tailfriends.admin.service;
 import com.tailfriends.admin.dto.AdminShopItemCreateRequest;
 import com.tailfriends.admin.dto.AdminShopItemListResponse;
 import com.tailfriends.admin.dto.AdminShopItemResponse;
+import com.tailfriends.admin.dto.AdminShopItemUpdateRequest;
 import com.tailfriends.animal.domain.RenderStyle;
+import com.tailfriends.global.exception.BusinessException;
+import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.point.domain.ShopItem;
 import com.tailfriends.point.repository.ShopItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +42,18 @@ public class AdminShopItemService {
                 .renderStyle(request.renderStyle() == null ? RenderStyle.ILLUSTRATION_2D : request.renderStyle())
                 .onSale(!Boolean.FALSE.equals(request.onSale()))
                 .build());
+        return AdminShopItemResponse.from(item);
+    }
+
+    /**
+     * 보낸 필드만 바꾼다. 가격을 바꿔도 이미 산 사람의 포인트는 그대로다.
+     */
+    @Transactional
+    public AdminShopItemResponse update(Long itemId, AdminShopItemUpdateRequest request) {
+        ShopItem item = shopItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+        item.update(request.name() == null ? null : request.name().strip(), request.category(), request.price(),
+                request.imageUrl(), request.renderStyle(), request.onSale());
         return AdminShopItemResponse.from(item);
     }
 }
