@@ -3,6 +3,7 @@ package com.tailfriends.enclosure.repository;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,6 @@ public interface EnclosureRepository extends JpaRepository<Enclosure, Long> {
     void insertBuiltInIfAbsent(@Param("userId") Long userId, @Param("theme") String theme);
 
     List<Enclosure> findAllByUserId(Long userId);
+
+    Optional<Enclosure> findByIdAndUserId(Long id, Long userId);
 }
