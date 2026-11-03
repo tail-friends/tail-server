@@ -1,7 +1,10 @@
 package com.tailfriends.admin.service;
 
+import com.tailfriends.admin.dto.AdminShopItemCreateRequest;
 import com.tailfriends.admin.dto.AdminShopItemListResponse;
 import com.tailfriends.admin.dto.AdminShopItemResponse;
+import com.tailfriends.animal.domain.RenderStyle;
+import com.tailfriends.point.domain.ShopItem;
 import com.tailfriends.point.repository.ShopItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,5 +27,18 @@ public class AdminShopItemService {
         return new AdminShopItemListResponse(shopItemRepository.findAllByOrderByIdAsc().stream()
                 .map(AdminShopItemResponse::from)
                 .toList());
+    }
+
+    @Transactional
+    public AdminShopItemResponse create(AdminShopItemCreateRequest request) {
+        ShopItem item = shopItemRepository.save(ShopItem.builder()
+                .name(request.name().strip())
+                .category(request.category())
+                .price(request.price())
+                .imageUrl(request.imageUrl())
+                .renderStyle(request.renderStyle() == null ? RenderStyle.ILLUSTRATION_2D : request.renderStyle())
+                .onSale(!Boolean.FALSE.equals(request.onSale()))
+                .build());
+        return AdminShopItemResponse.from(item);
     }
 }
