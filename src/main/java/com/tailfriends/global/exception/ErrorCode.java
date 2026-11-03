@@ -19,6 +19,7 @@ public enum ErrorCode {
 
     // 403
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없어요"),
+    ITEM_NOT_OWNED(HttpStatus.FORBIDDEN, "가지고 있지 않은 아이템이에요"),
 
     // 404
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 주소를 찾을 수 없어요"),
@@ -33,6 +34,7 @@ public enum ErrorCode {
     INVENTORY_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "먹이 재고 품목을 찾을 수 없어요"),
     BREEDING_NOT_FOUND(HttpStatus.NOT_FOUND, "번식 기록을 찾을 수 없어요"),
     ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "아이템을 찾을 수 없어요"),
+    ENCLOSURE_NOT_FOUND(HttpStatus.NOT_FOUND, "사육장을 찾을 수 없어요"),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식이에요"),
