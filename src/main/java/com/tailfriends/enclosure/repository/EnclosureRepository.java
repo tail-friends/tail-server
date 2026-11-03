@@ -2,9 +2,11 @@ package com.tailfriends.enclosure.repository;
 
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,4 +30,11 @@ public interface EnclosureRepository extends JpaRepository<Enclosure, Long> {
     List<Enclosure> findAllByUserId(Long userId);
 
     Optional<Enclosure> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * 사육장 행을 잠근다. 같은 사육장의 배치 저장(지우고 다시 넣기)이 동시에 오면 차례로 처리해서 섞이지 않게 한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Enclosure e where e.id = :id and e.user.id = :userId")
+    Optional<Enclosure> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 }
