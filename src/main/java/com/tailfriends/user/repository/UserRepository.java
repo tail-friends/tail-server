@@ -42,4 +42,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying
     @Query("update User u set u.points = u.points - :amount where u.id = :id and u.points >= :amount")
     int usePoints(@Param("id") Long id, @Param("amount") int amount);
+
+    /**
+     * DB의 지금 잔액. 같은 트랜잭션에서 addPoints·usePoints를 부른 뒤에도 바뀐 값을 읽는다.
+     */
+    @Query("select u.points from User u where u.id = :id")
+    Optional<Integer> findPointsById(@Param("id") Long id);
 }
