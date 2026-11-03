@@ -3,11 +3,15 @@ package com.tailfriends.enclosure.service;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
 import com.tailfriends.enclosure.dto.BackgroundResponse;
+import com.tailfriends.enclosure.dto.DecorationResponse;
 import com.tailfriends.enclosure.dto.EnclosureListResponse;
+import com.tailfriends.enclosure.dto.EnclosureResponse;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.repository.DecorationCount;
 import com.tailfriends.enclosure.repository.EnclosureDecorationRepository;
 import com.tailfriends.enclosure.repository.EnclosureRepository;
+import com.tailfriends.global.exception.BusinessException;
+import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.species.domain.Home;
 import java.util.Comparator;
@@ -60,5 +64,19 @@ public class EnclosureService {
                 .map(enclosure -> new EnclosureSummaryResponse(enclosure.getId(), BackgroundResponse.from(enclosure),
                         counts.getOrDefault(enclosure.getId(), 0L)))
                 .toList());
+    }
+
+    /**
+     * 배경과 장식(그리는 순서). animalIds는 합사 보기를 만들 때까지 빈 배열이다.
+     */
+    @Transactional(readOnly = true)
+    public EnclosureResponse getEnclosure(Long enclosureId) {
+        Enclosure enclosure = enclosureRepository.findByIdAndUserId(enclosureId, currentUser.id())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENCLOSURE_NOT_FOUND));
+        List<DecorationResponse> decorations = decorationRepository.findAllByEnclosureIdOrderByIdAsc(enclosureId)
+                .stream()
+                .map(DecorationResponse::from)
+                .toList();
+        return new EnclosureResponse(enclosure.getId(), BackgroundResponse.from(enclosure), decorations, List.of());
     }
 }
