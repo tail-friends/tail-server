@@ -2,6 +2,7 @@ package com.tailfriends.point.controller;
 
 import com.tailfriends.global.response.ApiResponse;
 import com.tailfriends.point.domain.ShopItemCategory;
+import com.tailfriends.point.dto.MyItemListResponse;
 import com.tailfriends.point.dto.PurchaseResponse;
 import com.tailfriends.point.dto.ShopItemListResponse;
 import com.tailfriends.point.service.ShopService;
@@ -34,5 +35,11 @@ public class ShopController {
     @PostMapping("/items/{itemId}/purchase")
     public ApiResponse<PurchaseResponse> purchase(@PathVariable Long itemId) {
         return ApiResponse.success(shopService.purchase(itemId));
+    }
+
+    @Operation(summary = "내 보유 아이템", description = "최근에 산 순서. 판매를 중지한 아이템도 나온다.")
+    @GetMapping("/my-items")
+    public ApiResponse<MyItemListResponse> getMyItems() {
+        return ApiResponse.success(shopService.getMyItems());
     }
 }
