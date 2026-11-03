@@ -19,4 +19,9 @@ public interface ShopItemRepository extends JpaRepository<ShopItem, Long> {
      * 살 수 있는 아이템. 판매를 중지했으면 비어 있다.
      */
     Optional<ShopItem> findByIdAndOnSaleTrue(Long id);
+
+    /**
+     * 관리용. 판매를 중지한 것까지 모두, 등록순.
+     */
+    List<ShopItem> findAllByOrderByIdAsc();
 }
