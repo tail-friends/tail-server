@@ -153,7 +153,7 @@ class AnimalServiceTest {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
-        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST));
+        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST, null));
 
         assertThat(animal.getHome()).isEqualTo(Home.FOREST);
         assertThat(response.home()).isEqualTo("forest");
@@ -163,7 +163,7 @@ class AnimalServiceTest {
     void 남의_개체나_없는_개체의_평소_사육장은_바꾸지_않는다() {
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST)))
+        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);

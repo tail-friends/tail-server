@@ -165,7 +165,7 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.home").value("forest"))
                 .andExpect(jsonPath("$.data.enclosureId").isEmpty());
 
-        verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST));
+        verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST, null));
     }
 
     @Test
