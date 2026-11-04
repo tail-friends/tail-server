@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,5 +61,14 @@ public class EnclosureController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<EnclosureCreateResponse> create(@Valid @RequestBody EnclosureCreateRequest request) {
         return ApiResponse.success(photoThemeService.create(request));
+    }
+
+    @Operation(summary = "사진 테마 삭제",
+            description = "본문 없이 204. 사진 테마만 지울 수 있다(기본 테마는 400 BUILT_IN_THEME). "
+                    + "이 테마를 평소 사육장으로 쓰던 개체는 종의 기본 테마로 돌아간다.")
+    @DeleteMapping("/{enclosureId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long enclosureId) {
+        photoThemeService.delete(enclosureId);
     }
 }
