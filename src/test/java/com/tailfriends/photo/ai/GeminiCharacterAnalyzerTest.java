@@ -24,7 +24,7 @@ import org.springframework.web.client.RestClient;
 
 class GeminiCharacterAnalyzerTest {
 
-    private static final String URL = GeminiCharacterAnalyzer.BASE_URL + "gemini-test:generateContent";
+    private static final String URL = GeminiClient.BASE_URL + "gemini-test:generateContent";
     private static final byte[] JPEG = {1, 2, 3};
 
     private final RestClient.Builder builder = RestClient.builder();
@@ -32,14 +32,15 @@ class GeminiCharacterAnalyzerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private GeminiCharacterAnalyzer analyzer(String apiKey) {
-        return new GeminiCharacterAnalyzer(builder.build(), new AiProperties("gemini-test", 5, apiKey, 10), objectMapper);
+        return new GeminiCharacterAnalyzer(
+                new GeminiClient(builder.build(), new AiProperties("gemini-test", 5, apiKey, 10), objectMapper));
     }
 
     @Test
     void 사진과_프롬프트를_보내고_답을_캐릭터_값으로_바꾼다() {
         server.expect(requestTo(URL))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header(GeminiCharacterAnalyzer.API_KEY_HEADER, "test-key"))
+                .andExpect(header(GeminiClient.API_KEY_HEADER, "test-key"))
                 .andExpect(jsonPath("$.contents[0].parts[1].inlineData.mimeType").value("image/jpeg"))
                 .andExpect(jsonPath("$.contents[0].parts[1].inlineData.data")
                         .value(Base64.getEncoder().encodeToString(JPEG)))
