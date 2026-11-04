@@ -11,6 +11,7 @@ public enum ErrorCode {
     // 400
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않아요"),
     INVALID_FILE(HttpStatus.BAD_REQUEST, "JPG·PNG 사진만 20MB까지 올릴 수 있어요"),
+    BUILT_IN_THEME(HttpStatus.BAD_REQUEST, "기본 테마는 지울 수 없어요"),
 
     // 401
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요해요"),
@@ -44,6 +45,7 @@ public enum ErrorCode {
     DUPLICATE_ITEM(HttpStatus.CONFLICT, "같은 이름의 품목이 이미 있어요"),
     NOT_ENOUGH_POINTS(HttpStatus.CONFLICT, "포인트가 부족해요"),
     ALREADY_OWNED(HttpStatus.CONFLICT, "이미 가진 아이템이에요"),
+    ENCLOSURE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "사진 테마는 10개까지 만들 수 있어요"),
     UNDO_EXPIRED(HttpStatus.CONFLICT, "되돌릴 수 있는 시간이 지났어요"),
 
     // 422
