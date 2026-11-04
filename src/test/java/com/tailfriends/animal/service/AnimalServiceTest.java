@@ -20,6 +20,7 @@ import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
+import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
@@ -50,11 +51,13 @@ class AnimalServiceTest {
 
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final SpeciesRepository speciesRepository = mock(SpeciesRepository.class);
+    private final EnclosureRepository enclosureRepository = mock(EnclosureRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
     private final PhotoFileRemover photoFileRemover = mock(PhotoFileRemover.class);
     private final AnimalService animalService = new AnimalService(CurrentUserStub.of(USER_ID), animalRepository,
-            speciesRepository, userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
+            speciesRepository, enclosureRepository, userRepository, new FeedService(logRepository, CLOCK),
+            mock(HealthAlertService.class),
             new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK,
             photoFileRemover);
 
