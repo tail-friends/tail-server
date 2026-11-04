@@ -157,12 +157,13 @@ class AnimalControllerTest {
     @Test
     @WithMockUserId(7L)
     void 평소_사육장을_바꾸면_소문자로_돌려주고_대문자도_받는다() throws Exception {
-        given(animalService.changeHome(eq(12L), any())).willReturn(new AnimalHomeResponse("forest"));
+        given(animalService.changeHome(eq(12L), any())).willReturn(AnimalHomeResponse.from(Home.FOREST));
 
         mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"home\": \"FOREST\" }"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.home").value("forest"));
+                .andExpect(jsonPath("$.data.home").value("forest"))
+                .andExpect(jsonPath("$.data.enclosureId").isEmpty());
 
         verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST));
     }
