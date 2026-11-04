@@ -3,6 +3,7 @@ package com.tailfriends.animal.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -166,6 +167,31 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.enclosureId").isEmpty());
 
         verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST, null));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 사진_테마_사육장_ID로_바꾸면_enclosureId를_돌려준다() throws Exception {
+        given(animalService.changeHome(eq(12L), any())).willReturn(AnimalHomeResponse.photoTheme(7L));
+
+        mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"enclosureId\": 7 }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.home").isEmpty())
+                .andExpect(jsonPath("$.data.enclosureId").value(7));
+
+        verify(animalService).changeHome(12L, new AnimalHomeRequest(null, 7L));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void home과_enclosureId를_같이_보내면_400() throws Exception {
+        mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"home\": \"forest\", \"enclosureId\": 7 }"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+
+        verify(animalService, never()).changeHome(any(), any());
     }
 
     @Test
