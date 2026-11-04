@@ -72,6 +72,21 @@ public class PhotoThemeService {
         return new EnclosureCreateResponse(enclosure.getId());
     }
 
+    /**
+     * 사진 테마만 지운다. 배치한 장식과 사진에서 읽은 장식은 함께 지워지고(DB ON DELETE CASCADE),
+     * 이 테마를 평소 사육장으로 쓰던 개체는 enclosure_id가 null이 되어(DB ON DELETE SET NULL) 종의 기본 테마로 돌아간다.
+     * 사진과 산 아이템은 남는다.
+     */
+    @Transactional
+    public void delete(Long enclosureId) {
+        Enclosure enclosure = enclosureRepository.findByIdAndUserIdForUpdate(enclosureId, currentUser.id())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENCLOSURE_NOT_FOUND));
+        if (enclosure.isBuiltIn()) {
+            throw new BusinessException(ErrorCode.BUILT_IN_THEME);
+        }
+        enclosureRepository.delete(enclosure);
+    }
+
     private static EnclosureObject toEntity(Enclosure enclosure, BackgroundObjectRequest object) {
         return EnclosureObject.builder()
                 .enclosure(enclosure)
