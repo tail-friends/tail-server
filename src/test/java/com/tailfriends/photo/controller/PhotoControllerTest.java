@@ -15,11 +15,13 @@ import com.tailfriends.global.support.WithMockUserId;
 import com.tailfriends.photo.ai.CharacterAnalysis;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.CharacterAnalysisResponse;
+import com.tailfriends.photo.dto.EnclosureAnalysisResponse;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.service.CharacterAnalysisService;
 import com.tailfriends.photo.service.EnclosureAnalysisService;
 import com.tailfriends.photo.service.PhotoService;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -151,5 +153,37 @@ class PhotoControllerTest {
         mockMvc.perform(post("/api/v1/photos/301/character-analysis"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error.code").value("AI_UNAVAILABLE"));
+    }
+
+    @Test
+    @WithMockUserId(1L)
+    void 사육장_분석_결과를_명세_형식으로_돌려준다() throws Exception {
+        given(enclosureAnalysisService.analyze(310L)).willReturn(new EnclosureAnalysisResponse("#C9A26B", "#5B4A3A",
+                List.of(new EnclosureAnalysisResponse.ObjectResponse("ROCK", 0.7, 0.8))));
+
+        mockMvc.perform(post("/api/v1/photos/310/enclosure-analysis"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.floorColor").value("#C9A26B"))
+                .andExpect(jsonPath("$.data.wallColor").value("#5B4A3A"))
+                .andExpect(jsonPath("$.data.objects[0].type").value("ROCK"))
+                .andExpect(jsonPath("$.data.objects[0].x").value(0.7))
+                .andExpect(jsonPath("$.data.objects[0].y").value(0.8));
+    }
+
+    @Test
+    @WithMockUserId(1L)
+    void 사육장이_아니면_422() throws Exception {
+        given(enclosureAnalysisService.analyze(310L))
+                .willThrow(new BusinessException(ErrorCode.NO_ENCLOSURE_IN_PHOTO));
+
+        mockMvc.perform(post("/api/v1/photos/310/enclosure-analysis"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("NO_ENCLOSURE_IN_PHOTO"));
+    }
+
+    @Test
+    void 사육장_분석도_로그인하지_않으면_401() throws Exception {
+        mockMvc.perform(post("/api/v1/photos/310/enclosure-analysis"))
+                .andExpect(status().isUnauthorized());
     }
 }
