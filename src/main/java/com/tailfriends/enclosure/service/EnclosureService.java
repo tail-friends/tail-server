@@ -3,6 +3,7 @@ package com.tailfriends.enclosure.service;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
 import com.tailfriends.enclosure.domain.EnclosureDecoration;
+import com.tailfriends.enclosure.domain.EnclosureObject;
 import com.tailfriends.enclosure.dto.BackgroundResponse;
 import com.tailfriends.enclosure.dto.DecorationListResponse;
 import com.tailfriends.enclosure.dto.DecorationRequest;
@@ -13,6 +14,7 @@ import com.tailfriends.enclosure.dto.DecorationsUpdateRequest;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.repository.DecorationCount;
 import com.tailfriends.enclosure.repository.EnclosureDecorationRepository;
+import com.tailfriends.enclosure.repository.EnclosureObjectRepository;
 import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
@@ -32,7 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 사육장과 장식 배치. 기능명세서 F-28. 사진 테마(F-27)와 합사(F-29)는 아직 없다.
+ * 사육장과 장식 배치. 기능명세서 F-28. 사진 테마 저장·삭제(F-27)는 PhotoThemeService, 합사(F-29)는 아직 없다.
  */
 @Service
 @RequiredArgsConstructor
@@ -49,6 +51,7 @@ public class EnclosureService {
     private final CurrentUser currentUser;
     private final EnclosureRepository enclosureRepository;
     private final EnclosureDecorationRepository decorationRepository;
+    private final EnclosureObjectRepository objectRepository;
     private final UserItemRepository userItemRepository;
     private final ShopItemRepository shopItemRepository;
 
@@ -78,7 +81,8 @@ public class EnclosureService {
     }
 
     /**
-     * 배경과 장식(그리는 순서). animalIds는 합사 보기를 만들 때까지 빈 배열이다.
+     * 배경과 장식(그리는 순서). 사진 테마면 배경에 사진에서 읽은 objects도 넣는다.
+     * animalIds는 합사 보기를 만들 때까지 빈 배열이다.
      */
     @Transactional(readOnly = true)
     public EnclosureResponse getEnclosure(Long enclosureId) {
@@ -88,7 +92,11 @@ public class EnclosureService {
                 .stream()
                 .map(DecorationResponse::from)
                 .toList();
-        return new EnclosureResponse(enclosure.getId(), BackgroundResponse.from(enclosure), decorations, List.of());
+        List<EnclosureObject> objects = enclosure.isBuiltIn()
+                ? List.of()
+                : objectRepository.findAllByEnclosureIdOrderByIdAsc(enclosureId);
+        return new EnclosureResponse(
+                enclosure.getId(), BackgroundResponse.of(enclosure, objects), decorations, List.of());
     }
 
     /**

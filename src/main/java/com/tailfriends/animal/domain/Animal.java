@@ -67,11 +67,17 @@ public class Animal extends BaseTimeEntity {
     private String memo;
 
     /**
-     * 평소 사육장. null이면 종의 default_home을 쓴다.
+     * 평소 사육장. home과 enclosureId가 모두 null이면 종의 default_home을 쓴다.
      */
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     private Home home;
+
+    /**
+     * 평소 사육장이 사진 테마면 그 사육장 ID. 이때 home은 null.
+     * 사진 테마를 지우면 null(DB ON DELETE SET NULL)이 되어 종의 default_home으로 돌아간다.
+     */
+    private Long enclosureId;
 
     private LocalDate coolingStart;
 
@@ -99,6 +105,12 @@ public class Animal extends BaseTimeEntity {
 
     public void changeHome(Home home) {
         this.home = home;
+        this.enclosureId = null;
+    }
+
+    public void changeHomeToPhotoTheme(Long enclosureId) {
+        this.home = null;
+        this.enclosureId = enclosureId;
     }
 
     /**

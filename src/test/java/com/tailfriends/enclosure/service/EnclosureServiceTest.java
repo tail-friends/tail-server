@@ -13,6 +13,8 @@ import static org.mockito.Mockito.verify;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
 import com.tailfriends.enclosure.domain.EnclosureDecoration;
+import com.tailfriends.enclosure.domain.EnclosureObject;
+import com.tailfriends.enclosure.dto.BackgroundResponse;
 import com.tailfriends.enclosure.dto.DecorationRequest;
 import com.tailfriends.enclosure.dto.DecorationResponse;
 import com.tailfriends.enclosure.dto.DecorationsUpdateRequest;
@@ -20,10 +22,12 @@ import com.tailfriends.enclosure.dto.EnclosureResponse;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.repository.DecorationCount;
 import com.tailfriends.enclosure.repository.EnclosureDecorationRepository;
+import com.tailfriends.enclosure.repository.EnclosureObjectRepository;
 import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
+import com.tailfriends.photo.ai.EnclosureObjectType;
 import com.tailfriends.point.domain.ShopItem;
 import com.tailfriends.point.repository.ShopItemRepository;
 import com.tailfriends.point.repository.UserItemRepository;
@@ -44,9 +48,10 @@ class EnclosureServiceTest {
     private final EnclosureRepository enclosureRepository = mock(EnclosureRepository.class);
     private final EnclosureDecorationRepository decorationRepository = mock(EnclosureDecorationRepository.class);
     private final UserItemRepository userItemRepository = mock(UserItemRepository.class);
+    private final EnclosureObjectRepository objectRepository = mock(EnclosureObjectRepository.class);
     private final ShopItemRepository shopItemRepository = mock(ShopItemRepository.class);
     private final EnclosureService service = new EnclosureService(CurrentUserStub.of(USER_ID), enclosureRepository,
-            decorationRepository, userItemRepository, shopItemRepository);
+            decorationRepository, objectRepository, userItemRepository, shopItemRepository);
 
     @Test
     void 기본_테마_사육장이_다_있지_않으면_다섯_테마를_모두_넣어_본다() {
@@ -80,8 +85,10 @@ class EnclosureServiceTest {
         List<EnclosureSummaryResponse> enclosures = service.getEnclosures().enclosures();
 
         assertThat(enclosures).extracting(EnclosureSummaryResponse::id).containsExactly(5L, 3L, 9L);
-        assertThat(enclosures).extracting(enclosure -> enclosure.background().theme())
-                .containsExactly("desert", "forest", "pond");
+        assertThat(enclosures).extracting(EnclosureSummaryResponse::background).containsExactly(
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "desert"),
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "forest"),
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "pond"));
         assertThat(enclosures).extracting(EnclosureSummaryResponse::decorationCount).containsExactly(0L, 2L, 0L);
     }
 
@@ -98,6 +105,34 @@ class EnclosureServiceTest {
         assertThat(response.decorations()).extracting(DecorationResponse::itemId).containsExactly(21L, 22L);
         assertThat(response.decorations().getFirst().x()).isEqualTo(0.3);
         assertThat(response.animalIds()).isEmpty();
+    }
+
+    @Test
+    void 사진_테마는_기본_테마_뒤에_나오고_목록에는_objects가_없다() {
+        Enclosure photoTheme = photoTheme(9L);
+        given(enclosureRepository.countByUserIdAndBackgroundType(USER_ID, BackgroundType.BUILT_IN)).willReturn(5L);
+        given(enclosureRepository.findAllByUserId(USER_ID)).willReturn(List.of(photoTheme, enclosure(3L, Home.POND)));
+
+        List<EnclosureSummaryResponse> enclosures = service.getEnclosures().enclosures();
+
+        assertThat(enclosures).extracting(EnclosureSummaryResponse::id).containsExactly(3L, 9L);
+        assertThat(enclosures.get(1).background()).isEqualTo(
+                new BackgroundResponse.Photo(BackgroundType.PHOTO, 310L, "#C9A26B", "#5B4A3A", null));
+        verify(objectRepository, never()).findAllByEnclosureIdOrderByIdAsc(anyLong());
+    }
+
+    @Test
+    void 사진_테마_상세는_배경에_사진에서_읽은_objects를_저장한_순서로_준다() {
+        Enclosure photoTheme = photoTheme(9L);
+        given(enclosureRepository.findByIdAndUserId(9L, USER_ID)).willReturn(Optional.of(photoTheme));
+        given(objectRepository.findAllByEnclosureIdOrderByIdAsc(9L)).willReturn(List.of(
+                EnclosureObject.builder().enclosure(photoTheme).type(EnclosureObjectType.ROCK)
+                        .x(new BigDecimal("0.700")).y(new BigDecimal("0.800")).build()));
+
+        EnclosureResponse response = service.getEnclosure(9L);
+
+        assertThat(response.background()).isEqualTo(new BackgroundResponse.Photo(BackgroundType.PHOTO, 310L,
+                "#C9A26B", "#5B4A3A", List.of(new BackgroundResponse.ObjectResponse("ROCK", 0.7, 0.8))));
     }
 
     @Test
@@ -153,6 +188,12 @@ class EnclosureServiceTest {
 
         assertThat(service.updateDecorations(3L, new DecorationsUpdateRequest(List.of())).decorations()).isEmpty();
         verify(decorationRepository).deleteAllByEnclosureId(3L);
+    }
+
+    private static Enclosure photoTheme(Long id) {
+        Enclosure enclosure = Enclosure.photoTheme(null, 310L, "#c9a26b", "#5B4A3A");
+        ReflectionTestUtils.setField(enclosure, "id", id);
+        return enclosure;
     }
 
     private static Enclosure enclosure(Long id, Home theme) {

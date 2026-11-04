@@ -3,6 +3,7 @@ package com.tailfriends.animal.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,7 +102,7 @@ class AnimalControllerTest {
                 new ShedSummary(LocalDate.of(2026, 9, 22), false, 32, LocalDate.of(2026, 10, 24), false),
                 new WeightSummaryResponse(new BigDecimal("57.8"), new BigDecimal("2.8")),
                 new CharacterSummaryResponse("gecko", "spots",
-                        new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert"),
+                        new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert", null),
                 null,
                 List.of(new AlertResponse(77L, 12L, AlertType.WEIGHT_LOSS_ALERT, "최근 30일 동안 체중이 12% 줄었어요",
                         AlertStatus.OPEN, Instant.parse("2026-10-18T09:00:00Z"))),
@@ -130,6 +131,7 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.character.shape").value("gecko"))
                 .andExpect(jsonPath("$.data.character.colors.body").value("#E0A33A"))
                 .andExpect(jsonPath("$.data.character.home").value("desert"))
+                .andExpect(jsonPath("$.data.character.enclosureId").isEmpty())
                 .andExpect(jsonPath("$.data.mood").value("UNWELL"));
     }
 
@@ -156,14 +158,40 @@ class AnimalControllerTest {
     @Test
     @WithMockUserId(7L)
     void 평소_사육장을_바꾸면_소문자로_돌려주고_대문자도_받는다() throws Exception {
-        given(animalService.changeHome(eq(12L), any())).willReturn(new AnimalHomeResponse("forest"));
+        given(animalService.changeHome(eq(12L), any())).willReturn(AnimalHomeResponse.from(Home.FOREST));
 
         mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"home\": \"FOREST\" }"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.home").value("forest"));
+                .andExpect(jsonPath("$.data.home").value("forest"))
+                .andExpect(jsonPath("$.data.enclosureId").isEmpty());
 
-        verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST));
+        verify(animalService).changeHome(12L, new AnimalHomeRequest(Home.FOREST, null));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 사진_테마_사육장_ID로_바꾸면_enclosureId를_돌려준다() throws Exception {
+        given(animalService.changeHome(eq(12L), any())).willReturn(AnimalHomeResponse.photoTheme(7L));
+
+        mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"enclosureId\": 7 }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.home").isEmpty())
+                .andExpect(jsonPath("$.data.enclosureId").value(7));
+
+        verify(animalService).changeHome(12L, new AnimalHomeRequest(null, 7L));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void home과_enclosureId를_같이_보내면_400() throws Exception {
+        mockMvc.perform(patch("/api/v1/animals/12/home").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"home\": \"forest\", \"enclosureId\": 7 }"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+
+        verify(animalService, never()).changeHome(any(), any());
     }
 
     @Test

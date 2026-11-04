@@ -120,7 +120,7 @@ com.tailfriends
 ├─ health    건강 경고
 ├─ schedule  반복 일정
 ├─ point     케어 포인트 (적립, 내역, 상점·보유 아이템)
-├─ enclosure 사육장 (기본 테마, 장식 배치)
+├─ enclosure 사육장 (기본·사진 테마, 장식 배치)
 ├─ inventory 먹이 재고
 ├─ breeding  번식 기록 (산란, 해칭 개체 등록)
 ├─ today     오늘 할 일 (여러 도메인을 모아 보여주기만 한다)
