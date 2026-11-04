@@ -21,6 +21,7 @@ import com.tailfriends.enclosure.dto.EnclosureResponse;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.repository.DecorationCount;
 import com.tailfriends.enclosure.repository.EnclosureDecorationRepository;
+import com.tailfriends.enclosure.repository.EnclosureObjectRepository;
 import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
@@ -45,9 +46,10 @@ class EnclosureServiceTest {
     private final EnclosureRepository enclosureRepository = mock(EnclosureRepository.class);
     private final EnclosureDecorationRepository decorationRepository = mock(EnclosureDecorationRepository.class);
     private final UserItemRepository userItemRepository = mock(UserItemRepository.class);
+    private final EnclosureObjectRepository objectRepository = mock(EnclosureObjectRepository.class);
     private final ShopItemRepository shopItemRepository = mock(ShopItemRepository.class);
     private final EnclosureService service = new EnclosureService(CurrentUserStub.of(USER_ID), enclosureRepository,
-            decorationRepository, userItemRepository, shopItemRepository);
+            decorationRepository, objectRepository, userItemRepository, shopItemRepository);
 
     @Test
     void 기본_테마_사육장이_다_있지_않으면_다섯_테마를_모두_넣어_본다() {
