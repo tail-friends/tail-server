@@ -101,7 +101,7 @@ class AnimalControllerTest {
                 new ShedSummary(LocalDate.of(2026, 9, 22), false, 32, LocalDate.of(2026, 10, 24), false),
                 new WeightSummaryResponse(new BigDecimal("57.8"), new BigDecimal("2.8")),
                 new CharacterSummaryResponse("gecko", "spots",
-                        new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert"),
+                        new CharacterResponse.Colors("#E0A33A", "#3A2A1E", "#F2E6C8", "#2B2B2B"), "desert", null),
                 null,
                 List.of(new AlertResponse(77L, 12L, AlertType.WEIGHT_LOSS_ALERT, "최근 30일 동안 체중이 12% 줄었어요",
                         AlertStatus.OPEN, Instant.parse("2026-10-18T09:00:00Z"))),
@@ -130,6 +130,7 @@ class AnimalControllerTest {
                 .andExpect(jsonPath("$.data.character.shape").value("gecko"))
                 .andExpect(jsonPath("$.data.character.colors.body").value("#E0A33A"))
                 .andExpect(jsonPath("$.data.character.home").value("desert"))
+                .andExpect(jsonPath("$.data.character.enclosureId").isEmpty())
                 .andExpect(jsonPath("$.data.mood").value("UNWELL"));
     }
 

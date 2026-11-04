@@ -34,13 +34,19 @@ public class AnimalStatusService {
         WeightSummaryResponse weight = WeightSummaryResponse.from(
                 logRepository.findLatestWeights(animal.getId(), PageRequest.of(0, 2)));
         CharacterSummaryResponse character = animalCharacterRepository.findById(animal.getId())
-                .map(saved -> CharacterSummaryResponse.of(saved, homeOf(animal)))
+                .map(saved -> CharacterSummaryResponse.of(saved, homeOf(animal), animal.getEnclosureId()))
                 .orElse(null);
         Mood mood = Mood.of(feed, hasOpenAlert, shed.lastDate(), KstDate.today(clock));
         return new AnimalStatus(shed, weight, character, mood);
     }
 
+    /**
+     * 평소 사육장 테마. 사진 테마면 null(enclosureId로 준다).
+     */
     private static Home homeOf(Animal animal) {
+        if (animal.getEnclosureId() != null) {
+            return null;
+        }
         if (animal.getHome() != null) {
             return animal.getHome();
         }
