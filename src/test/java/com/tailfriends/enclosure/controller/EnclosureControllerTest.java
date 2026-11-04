@@ -19,6 +19,7 @@ import com.tailfriends.enclosure.dto.EnclosureListResponse;
 import com.tailfriends.enclosure.dto.EnclosureResponse;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.service.EnclosureService;
+import com.tailfriends.enclosure.service.PhotoThemeService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
@@ -43,6 +44,9 @@ class EnclosureControllerTest {
 
     @MockitoBean
     private EnclosureService enclosureService;
+
+    @MockitoBean
+    private PhotoThemeService photoThemeService;
 
     @Test
     @WithMockUserId(7L)
