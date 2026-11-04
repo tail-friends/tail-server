@@ -48,6 +48,7 @@ public enum ErrorCode {
 
     // 422
     NO_REPTILE_IN_PHOTO(HttpStatus.UNPROCESSABLE_ENTITY, "사진에서 파충류를 찾지 못했어요"),
+    NO_ENCLOSURE_IN_PHOTO(HttpStatus.UNPROCESSABLE_ENTITY, "사진에서 사육장을 찾지 못했어요"),
 
     // 429
     AI_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 AI 분석 횟수를 모두 사용했어요"),

@@ -3,8 +3,10 @@ package com.tailfriends.photo.controller;
 import com.tailfriends.global.response.ApiResponse;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.CharacterAnalysisResponse;
+import com.tailfriends.photo.dto.EnclosureAnalysisResponse;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.service.CharacterAnalysisService;
+import com.tailfriends.photo.service.EnclosureAnalysisService;
 import com.tailfriends.photo.service.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +28,7 @@ public class PhotoController {
 
     private final PhotoService photoService;
     private final CharacterAnalysisService characterAnalysisService;
+    private final EnclosureAnalysisService enclosureAnalysisService;
 
     @Operation(summary = "사진 업로드",
             description = "JPG·PNG, 최대 20MB. 128px 썸네일을 만들고 keepOriginal이면서 원본 사진 보관에 동의했으면 긴 변 1600px 원본을 보관한다. 동의하지 않았으면 originalKept=false. 분석은 따로 호출한다.")
@@ -46,5 +49,13 @@ public class PhotoController {
     public ApiResponse<CharacterAnalysisResponse> analyzeCharacter(
             @PathVariable Long photoId) {
         return ApiResponse.success(characterAnalysisService.analyze(photoId));
+    }
+
+    @Operation(summary = "사육장 분석 (AI)",
+            description = "사육장 사진(purpose=ENCLOSURE)에서 바닥·벽 색과 장식(10개까지)을 읽는다. 저장하지 않는다. "
+                    + "하루 횟수는 캐릭터 분석과 합쳐 센다.")
+    @PostMapping("/api/v1/photos/{photoId}/enclosure-analysis")
+    public ApiResponse<EnclosureAnalysisResponse> analyzeEnclosure(@PathVariable Long photoId) {
+        return ApiResponse.success(enclosureAnalysisService.analyze(photoId));
     }
 }
