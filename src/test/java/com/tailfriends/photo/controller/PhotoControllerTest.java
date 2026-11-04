@@ -17,6 +17,7 @@ import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.CharacterAnalysisResponse;
 import com.tailfriends.photo.dto.PhotoUploadResponse;
 import com.tailfriends.photo.service.CharacterAnalysisService;
+import com.tailfriends.photo.service.EnclosureAnalysisService;
 import com.tailfriends.photo.service.PhotoService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class PhotoControllerTest {
 
     @MockitoBean
     private CharacterAnalysisService characterAnalysisService;
+
+    @MockitoBean
+    private EnclosureAnalysisService enclosureAnalysisService;
 
     @Test
     @WithMockUserId(1L)
