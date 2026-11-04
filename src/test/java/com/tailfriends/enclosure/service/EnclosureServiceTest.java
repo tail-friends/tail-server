@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
 import com.tailfriends.enclosure.domain.EnclosureDecoration;
+import com.tailfriends.enclosure.dto.BackgroundResponse;
 import com.tailfriends.enclosure.dto.DecorationRequest;
 import com.tailfriends.enclosure.dto.DecorationResponse;
 import com.tailfriends.enclosure.dto.DecorationsUpdateRequest;
@@ -80,8 +81,10 @@ class EnclosureServiceTest {
         List<EnclosureSummaryResponse> enclosures = service.getEnclosures().enclosures();
 
         assertThat(enclosures).extracting(EnclosureSummaryResponse::id).containsExactly(5L, 3L, 9L);
-        assertThat(enclosures).extracting(enclosure -> enclosure.background().theme())
-                .containsExactly("desert", "forest", "pond");
+        assertThat(enclosures).extracting(EnclosureSummaryResponse::background).containsExactly(
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "desert"),
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "forest"),
+                new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "pond"));
         assertThat(enclosures).extracting(EnclosureSummaryResponse::decorationCount).containsExactly(0L, 2L, 0L);
     }
 

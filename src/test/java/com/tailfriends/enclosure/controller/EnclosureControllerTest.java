@@ -36,7 +36,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTestSupport
 class EnclosureControllerTest {
 
-    private static final BackgroundResponse DESERT = new BackgroundResponse(BackgroundType.BUILT_IN, "desert");
+    private static final BackgroundResponse DESERT = new BackgroundResponse.BuiltIn(BackgroundType.BUILT_IN, "desert");
 
     @Autowired
     private MockMvc mockMvc;
