@@ -205,6 +205,17 @@ git rev-parse origin/develop^{tree}
 - 머지는 여전히 **Create a merge commit**으로 한다. Squash로 머지돼도 다음 릴리즈에서 같은 절차로 올리면 충돌은 나지 않는다.
 - `-s ours`는 main에만 있는 변경을 버린다. main은 릴리즈 PR로만 바뀌므로 그런 변경이 없어야 하고, 위 두 값이 다르면 멈추고 사람에게 알린다. (`hotfix/`를 main에 넣었다면 develop에도 먼저 병합되어 있어야 한다.)
 
+## AI 도구 설정 (`.claude/`)
+
+Claude Code는 `.claude/settings.json`을 읽는다. 규칙을 바꾸면 이 설정과 스킬도 같이 고친다.
+
+- 권한: 빌드·테스트·조회 명령은 묻지 않고 실행한다. `.env` 읽기, force push, `main`·`develop` 직접 push는 막는다.
+- 커밋·PR의 AI 표시는 끈다(`attribution`).
+- 훅 (`.claude/hooks/`, python3 필요)
+  - `check-commit-message.py`: `git commit -m` 메시지가 `타입: 설명 (#N)` 형식이 아니거나 AI 도구 표시가 있으면 막는다. `-m`이 없는 커밋은 검사하지 않는다.
+  - `check-line-length.py`: Java 파일을 고친 뒤 120자를 넘는 줄이 있으면 알려 준다.
+- 스킬 (`.claude/skills/`): `start-task`(이슈·브랜치), `new-domain-api`(도메인 API), `open-pr`(push·PR), `merge-pr`(Squash 머지·뒷정리), `release`(릴리즈 PR)
+
 ## 하지 말 것
 
 - `ddl-auto`를 `update`나 `create`로 바꾸지 않는다.
