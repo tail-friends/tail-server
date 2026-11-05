@@ -207,7 +207,7 @@ git rev-parse origin/develop^{tree}
 
 ## AI 도구 설정 (`.claude/`)
 
-Claude Code는 `.claude/settings.json`을 읽는다. 규칙을 바꾸면 이 설정과 스킬도 같이 고친다.
+Claude Code는 `CLAUDE.md`(`@AGENTS.md`로 이 파일을 불러온다)와 `.claude/settings.json`을 읽는다. 규칙은 이 파일에만 쓰고 `CLAUDE.md`에는 따로 쓰지 않는다. 규칙을 바꾸면 설정과 스킬도 같이 고친다.
 
 - 권한: 빌드·테스트·조회 명령은 묻지 않고 실행한다. `.env` 읽기, force push, `main`·`develop` 직접 push는 막는다.
 - 커밋·PR의 AI 표시는 끈다(`attribution`).
