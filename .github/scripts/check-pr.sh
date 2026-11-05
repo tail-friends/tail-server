@@ -14,12 +14,14 @@ set -euo pipefail
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY가 필요합니다}"
 
 types='feat|fix|refactor|docs|test|chore|style'
-ai_marks='co-authored-by:.*(claude|anthropic|codex|openai|copilot)|generated with [[]?claude|generated (by|with) (codex|chatgpt|copilot)'
+# 트레일러와 서명은 줄 맨 앞에 온다. 본문에서 규칙을 설명하는 문장("Co-Authored-By: Claude 등")은 잡지 않는다
+ai_marks='^[[:space:]]*co-authored-by:.*(claude|anthropic|codex|openai|copilot)'
+ai_marks+='|^[[:space:]]*generated (with|by) [[]?(claude|codex|chatgpt|copilot)|🤖'
 
 failed=0
 
 has_ai_mark() {
-  grep -iqE "$ai_marks" <<< "$1" || grep -qF '🤖' <<< "$1"
+  grep -iqE "$ai_marks" <<< "$1"
 }
 
 if [ "$BASE_REF" = main ]; then
@@ -37,9 +39,9 @@ if has_ai_mark "$PR_TITLE"$'\n'"${PR_BODY:-}"; then
   failed=1
 fi
 
-# 커밋 목록 응답에 메시지가 들어 있어 jq로 한 번에 거른다
+# 커밋 목록 응답에 메시지가 들어 있어 jq로 한 번에 거른다. jq의 ^는 문자열 맨 앞만 뜻해서 줄로 나눠 검사한다
 marked=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits" -q "
-  .[] | select(.commit.message | test(\"$ai_marks|🤖\"; \"i\"))
+  .[] | select(.commit.message | split(\"\\n\") | any(test(\"$ai_marks\"; \"i\")))
   | .sha[0:7] + \" \" + (.commit.message | split(\"\\n\")[0])")
 if [ -n "$marked" ]; then
   while IFS= read -r line; do
