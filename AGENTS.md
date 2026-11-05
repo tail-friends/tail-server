@@ -72,7 +72,7 @@ Swagger UI: http://localhost:8080/swagger-ui
 - 제목은 커밋 메시지 형식과 같다. 예: `feat: 개체 등록 API 추가 (#12)`
 - 본문은 `.github/pull_request_template.md`를 따른다. 확인하지 못한 항목은 체크하지 않고 이유를 적는다.
 - 리뷰어: 같은 파트의 다른 담당자. 담당자(Assignee): PR을 올린 사람.
-- 기능 PR은 **Squash and merge**, 릴리즈 PR(develop → main)은 **Create a merge commit**으로 머지한다.
+- 기능 PR은 **Squash and merge**, 릴리즈 PR(develop → main)은 **Create a merge commit**으로 머지한다. Rebase merge는 레포 설정에서 꺼 두었다.
 - 승인 없이 머지하지 않는다. 브랜치 보호 규칙으로 main·develop은 승인 1개와 Build 체크가 필수다.
 
 ## API 변경
