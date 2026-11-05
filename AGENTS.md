@@ -1,8 +1,8 @@
 # AGENTS.md
 
 꼬리친구 백엔드 서버(tail-server)에서 일하는 AI 코딩 도구(Claude Code, Codex 등)와 사람이 함께 지키는 규칙이다.
-1부는 팀 공통 규칙(원본: `tail-friends/.github` 레포의 `harness/COMMON.md`), 2부는 서버 규칙이다.
-공통 규칙을 바꿀 때는 원본을 먼저 고치고 각 레포에 복사한다.
+1부는 협업 규칙(이슈, 브랜치, 커밋, PR, 응답 형식), 2부는 서버 구현 규칙이다.
+1부는 앱(tail-app)·웹(tail-client)과 아직 맞추지 않은 서버 기준이다. 다른 레포와 맞추게 되면 그때 공통 원본을 정한다.
 
 ## 프로젝트
 
@@ -29,7 +29,7 @@ Swagger UI: http://localhost:8080/swagger-ui
 
 ---
 
-# 1부. 팀 공통 규칙
+# 1부. 협업 규칙
 
 ## 작업 흐름
 
