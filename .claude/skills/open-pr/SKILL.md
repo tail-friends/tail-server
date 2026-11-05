@@ -37,10 +37,4 @@ AGENTS.md의 "PR"과 "AI 도구 사용 규칙"을 따른다. 사람이 PR을 요
 
 ## 머지
 
-- 이 스킬은 머지하지 않는다.
-- 사람이 머지를 요청하면 승인(`reviewDecision`이 `APPROVED`)과 Build 통과를 확인한 뒤 Squash로 머지하고, 연결된 이슈를 닫는다.
-  ```bash
-  gh pr view <번호> --json reviewDecision,mergeStateStatus
-  gh pr merge <번호> --squash --delete-branch
-  gh issue close <이슈번호> --reason completed --comment "#<PR번호> 에서 develop에 머지됨"
-  ```
+- 이 스킬은 머지하지 않는다. 머지와 뒷정리(이슈 닫기, 로컬 정리, 노션 반영)는 `merge-pr` 스킬을 쓴다.
