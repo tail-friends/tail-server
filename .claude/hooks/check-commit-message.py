@@ -13,12 +13,12 @@ import sys
 
 TYPES = ("feat", "fix", "refactor", "docs", "test", "chore", "style")
 SUBJECT = re.compile(r"^(%s): .+ \(#\d+\)$" % "|".join(TYPES))
+# 트레일러와 서명은 줄 맨 앞에 온다. .github/scripts/check-pr.sh와 같은 기준이다
 AI_MARKS = re.compile(
-    r"co-authored-by:.*(claude|anthropic|codex|openai|copilot)"
-    r"|generated with \[?claude"
-    r"|generated (by|with) (codex|chatgpt|copilot)"
+    r"^\s*co-authored-by:.*(claude|anthropic|codex|openai|copilot)"
+    r"|^\s*generated (with|by) \[?(claude|codex|chatgpt|copilot)"
     r"|🤖",
-    re.IGNORECASE,
+    re.IGNORECASE | re.MULTILINE,
 )
 
 
