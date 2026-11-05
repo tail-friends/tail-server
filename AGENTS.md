@@ -1,4 +1,4 @@
-# AGENTS.md
+더# AGENTS.md
 
 꼬리친구 백엔드 서버(tail-server)에서 일하는 AI 코딩 도구(Claude Code, Codex 등)와 사람이 함께 지키는 규칙이다.
 1부는 협업 규칙(이슈, 브랜치, 커밋, PR, 응답 형식), 2부는 서버 구현 규칙이다.
@@ -69,7 +69,7 @@ Swagger UI: http://localhost:8080/swagger-ui
 
 ## PR
 
-- 제목은 커밋 메시지 형식과 같다. 예: `feat: 개체 등록 API 추가 (#12)`
+- 제목은 커밋 메시지 형식과 같다. 예: `feat: 개체 등록 API 추가 (#12)` Squash 머지하면 제목이 그대로 develop의 커밋 메시지가 된다. PR CI의 `Check PR title and messages` 단계(`.github/scripts/check-pr.sh`)가 제목 형식과 제목·본문·커밋의 AI 도구 표시를 검사한다.
 - 본문은 `.github/pull_request_template.md`를 따른다. 확인하지 못한 항목은 체크하지 않고 이유를 적는다.
 - 리뷰어: 같은 파트의 다른 담당자. 담당자(Assignee): PR을 올린 사람.
 - 기능 PR은 **Squash and merge**, 릴리즈 PR(develop → main)은 **Create a merge commit**으로 머지한다. Rebase merge는 레포 설정에서 꺼 두었다.
