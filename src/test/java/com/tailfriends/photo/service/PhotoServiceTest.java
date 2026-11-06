@@ -189,6 +189,19 @@ class PhotoServiceTest {
     }
 
     @Test
+    void 원본을_보관하지_않는_사육장_사진도_1024px_분석용_사본을_둔다() {
+        given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
+        given(imageResizer.toJpegs(BYTES, 128, 1024)).willReturn(List.of(new byte[] {9}, new byte[] {7}));
+        given(photoRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        photoService.upload(12L, PhotoPurpose.ENCLOSURE, false, FILE);
+
+        verify(photoStorage).save(argThat(key -> key.endsWith("_analysis.jpg")), eq(new byte[] {7}));
+        verify(photoRepository).save(argThat((Photo photo) ->
+                photo.getOriginalKey() == null && photo.getAnalysisKey().endsWith("_analysis.jpg")));
+    }
+
+    @Test
     void 원본_보관을_원하고_동의했으면_1600px_원본도_저장한다() {
         given(animalRepository.findByIdAndUserId(12L, 1L)).willReturn(Optional.of(animal));
         given(consentService.isAgreed(1L, ConsentType.KEEP_ORIGINAL)).willReturn(true);

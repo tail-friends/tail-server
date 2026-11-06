@@ -14,6 +14,8 @@ import com.tailfriends.animal.dto.AnimalSummaryResponse;
 import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.repository.AnimalRepository;
+import com.tailfriends.enclosure.domain.Enclosure;
+import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
@@ -40,6 +42,7 @@ public class AnimalService {
     private final CurrentUser currentUser;
     private final AnimalRepository animalRepository;
     private final SpeciesRepository speciesRepository;
+    private final EnclosureRepository enclosureRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final HealthAlertService healthAlertService;
@@ -117,13 +120,25 @@ public class AnimalService {
 
     /**
      * 평소 사육장을 바꾼다. 없거나 남의 개체면 ANIMAL_NOT_FOUND.
+     * enclosureId가 기본 테마 사육장이면 그 테마를 home으로 저장한다. 없거나 남의 사육장이면 ENCLOSURE_NOT_FOUND.
+     * 사육장 행을 잠가서, 그 사진 테마가 동시에 지워져도 지워진 사육장을 가리키지 않는다.
      */
     @Transactional
     public AnimalHomeResponse changeHome(Long animalId, AnimalHomeRequest request) {
         Long userId = currentUser.id();
         Animal animal = findAnimal(userId, animalId);
-        animal.changeHome(request.home());
-        return AnimalHomeResponse.from(animal.getHome());
+        if (request.enclosureId() == null) {
+            animal.changeHome(request.home());
+            return AnimalHomeResponse.from(animal.getHome());
+        }
+        Enclosure enclosure = enclosureRepository.findByIdAndUserIdForUpdate(request.enclosureId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENCLOSURE_NOT_FOUND));
+        if (enclosure.isBuiltIn()) {
+            animal.changeHome(enclosure.getTheme());
+            return AnimalHomeResponse.from(enclosure.getTheme());
+        }
+        animal.changeHomeToPhotoTheme(enclosure.getId());
+        return AnimalHomeResponse.photoTheme(enclosure.getId());
     }
 
     /**

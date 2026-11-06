@@ -1,8 +1,8 @@
-# AGENTS.md
+더# AGENTS.md
 
 꼬리친구 백엔드 서버(tail-server)에서 일하는 AI 코딩 도구(Claude Code, Codex 등)와 사람이 함께 지키는 규칙이다.
-1부는 팀 공통 규칙(원본: `tail-friends/.github` 레포의 `harness/COMMON.md`), 2부는 서버 규칙이다.
-공통 규칙을 바꿀 때는 원본을 먼저 고치고 각 레포에 복사한다.
+1부는 협업 규칙(이슈, 브랜치, 커밋, PR, 응답 형식), 2부는 서버 구현 규칙이다.
+1부는 앱(tail-app)·웹(tail-client)과 아직 맞추지 않은 서버 기준이다. 다른 레포와 맞추게 되면 그때 공통 원본을 정한다.
 
 ## 프로젝트
 
@@ -29,7 +29,7 @@ Swagger UI: http://localhost:8080/swagger-ui
 
 ---
 
-# 1부. 팀 공통 규칙
+# 1부. 협업 규칙
 
 ## 작업 흐름
 
@@ -69,10 +69,10 @@ Swagger UI: http://localhost:8080/swagger-ui
 
 ## PR
 
-- 제목은 커밋 메시지 형식과 같다. 예: `feat: 개체 등록 API 추가 (#12)`
+- 제목은 커밋 메시지 형식과 같다. 예: `feat: 개체 등록 API 추가 (#12)` Squash 머지하면 제목이 그대로 develop의 커밋 메시지가 된다. PR CI의 `Check PR title and messages` 단계(`.github/scripts/check-pr.sh`)가 제목 형식과 제목·본문·커밋의 AI 도구 표시를 검사한다.
 - 본문은 `.github/pull_request_template.md`를 따른다. 확인하지 못한 항목은 체크하지 않고 이유를 적는다.
 - 리뷰어: 같은 파트의 다른 담당자. 담당자(Assignee): PR을 올린 사람.
-- 기능 PR은 **Squash and merge**, 릴리즈 PR(develop → main)은 **Create a merge commit**으로 머지한다.
+- 기능 PR은 **Squash and merge**, 릴리즈 PR(develop → main)은 **Create a merge commit**으로 머지한다. Rebase merge는 레포 설정에서 꺼 두었다.
 - 승인 없이 머지하지 않는다. 브랜치 보호 규칙으로 main·develop은 승인 1개와 Build 체크가 필수다.
 
 ## API 변경
@@ -119,7 +119,8 @@ com.tailfriends
 ├─ photo     사진, AI 분석
 ├─ health    건강 경고
 ├─ schedule  반복 일정
-├─ point     케어 포인트 (적립, 내역)
+├─ point     케어 포인트 (적립, 내역, 상점·보유 아이템)
+├─ enclosure 사육장 (기본·사진 테마, 장식 배치)
 ├─ inventory 먹이 재고
 ├─ breeding  번식 기록 (산란, 해칭 개체 등록)
 ├─ today     오늘 할 일 (여러 도메인을 모아 보여주기만 한다)
@@ -203,6 +204,17 @@ git rev-parse origin/develop^{tree}
 - 본문에 포함된 PR, 새 마이그레이션, 운영 서버에 넣을 환경 변수를 적는다.
 - 머지는 여전히 **Create a merge commit**으로 한다. Squash로 머지돼도 다음 릴리즈에서 같은 절차로 올리면 충돌은 나지 않는다.
 - `-s ours`는 main에만 있는 변경을 버린다. main은 릴리즈 PR로만 바뀌므로 그런 변경이 없어야 하고, 위 두 값이 다르면 멈추고 사람에게 알린다. (`hotfix/`를 main에 넣었다면 develop에도 먼저 병합되어 있어야 한다.)
+
+## AI 도구 설정 (`.claude/`)
+
+Claude Code는 `CLAUDE.md`(`@AGENTS.md`로 이 파일을 불러온다)와 `.claude/settings.json`을 읽는다. 규칙은 이 파일에만 쓰고 `CLAUDE.md`에는 따로 쓰지 않는다. 규칙을 바꾸면 설정과 스킬도 같이 고친다.
+
+- 권한: 빌드·테스트·조회 명령은 묻지 않고 실행한다. `.env` 읽기, force push, `main`·`develop` 직접 push는 막는다.
+- 커밋·PR의 AI 표시는 끈다(`attribution`).
+- 훅 (`.claude/hooks/`, python3 필요)
+  - `check-commit-message.py`: `git commit -m` 메시지가 `타입: 설명 (#N)` 형식이 아니거나 AI 도구 표시가 있으면 막는다. `-m`이 없는 커밋은 검사하지 않는다.
+  - `check-line-length.py`: Java 파일을 고친 뒤 120자를 넘는 줄이 있으면 알려 준다.
+- 스킬 (`.claude/skills/`): `start-task`(이슈·브랜치), `new-domain-api`(도메인 API), `open-pr`(push·PR), `merge-pr`(Squash 머지·뒷정리), `release`(릴리즈 PR)
 
 ## 하지 말 것
 

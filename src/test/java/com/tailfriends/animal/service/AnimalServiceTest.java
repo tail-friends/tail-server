@@ -20,6 +20,9 @@ import com.tailfriends.animal.dto.AnimalUpdateRequest;
 import com.tailfriends.animal.dto.CoolingResponse;
 import com.tailfriends.animal.repository.AnimalCharacterRepository;
 import com.tailfriends.animal.repository.AnimalRepository;
+import com.tailfriends.enclosure.domain.BackgroundType;
+import com.tailfriends.enclosure.domain.Enclosure;
+import com.tailfriends.enclosure.repository.EnclosureRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
@@ -40,6 +43,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class AnimalServiceTest {
@@ -50,11 +54,13 @@ class AnimalServiceTest {
 
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final SpeciesRepository speciesRepository = mock(SpeciesRepository.class);
+    private final EnclosureRepository enclosureRepository = mock(EnclosureRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final LogRepository logRepository = mock(LogRepository.class);
     private final PhotoFileRemover photoFileRemover = mock(PhotoFileRemover.class);
     private final AnimalService animalService = new AnimalService(CurrentUserStub.of(USER_ID), animalRepository,
-            speciesRepository, userRepository, new FeedService(logRepository, CLOCK), mock(HealthAlertService.class),
+            speciesRepository, enclosureRepository, userRepository, new FeedService(logRepository, CLOCK),
+            mock(HealthAlertService.class),
             new AnimalStatusService(logRepository, mock(AnimalCharacterRepository.class), CLOCK), CLOCK,
             photoFileRemover);
 
@@ -153,17 +159,63 @@ class AnimalServiceTest {
         Animal animal = animal();
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
 
-        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST));
+        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST, null));
 
         assertThat(animal.getHome()).isEqualTo(Home.FOREST);
         assertThat(response.home()).isEqualTo("forest");
     }
 
     @Test
+    void 사진_테마_사육장으로_바꾸면_home은_비우고_enclosureId를_돌려준다() {
+        Animal animal = animal();
+        animal.changeHome(Home.FOREST);
+        Enclosure photoTheme = Enclosure.photoTheme(null, 310L, "#C9A26B", "#5B4A3A");
+        ReflectionTestUtils.setField(photoTheme, "id", 7L);
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+        given(enclosureRepository.findByIdAndUserIdForUpdate(7L, USER_ID)).willReturn(Optional.of(photoTheme));
+
+        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(null, 7L));
+
+        assertThat(animal.getHome()).isNull();
+        assertThat(animal.getEnclosureId()).isEqualTo(7L);
+        assertThat(response).isEqualTo(new AnimalHomeResponse(null, 7L));
+    }
+
+    @Test
+    void 기본_테마_사육장_ID로_바꾸면_그_테마를_home으로_저장한다() {
+        Animal animal = animal();
+        animal.changeHomeToPhotoTheme(7L);
+        Enclosure pond = BeanUtils.instantiateClass(Enclosure.class);
+        ReflectionTestUtils.setField(pond, "backgroundType", BackgroundType.BUILT_IN);
+        ReflectionTestUtils.setField(pond, "theme", Home.POND);
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+        given(enclosureRepository.findByIdAndUserIdForUpdate(5L, USER_ID)).willReturn(Optional.of(pond));
+
+        AnimalHomeResponse response = animalService.changeHome(12L, new AnimalHomeRequest(null, 5L));
+
+        assertThat(animal.getHome()).isEqualTo(Home.POND);
+        assertThat(animal.getEnclosureId()).isNull();
+        assertThat(response).isEqualTo(new AnimalHomeResponse("pond", null));
+    }
+
+    @Test
+    void 없거나_남의_사육장이면_바꾸지_않고_ENCLOSURE_NOT_FOUND() {
+        Animal animal = animal();
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(animal));
+        given(enclosureRepository.findByIdAndUserIdForUpdate(99L, USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(null, 99L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ENCLOSURE_NOT_FOUND);
+        assertThat(animal.getEnclosureId()).isNull();
+    }
+
+    @Test
     void 남의_개체나_없는_개체의_평소_사육장은_바꾸지_않는다() {
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST)))
+        assertThatThrownBy(() -> animalService.changeHome(12L, new AnimalHomeRequest(Home.FOREST, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);

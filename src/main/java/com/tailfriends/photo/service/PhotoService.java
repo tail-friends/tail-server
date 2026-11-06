@@ -24,7 +24,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +43,12 @@ public class PhotoService {
     static final int ORIGINAL_SIZE = 1600;
     static final int ANALYSIS_SIZE = 1024;
 
+    /**
+     * AI로 분석하는 사진. 원본을 보관하지 않아도 분석용 사본을 둔다.
+     */
+    private static final Set<PhotoPurpose> ANALYZED_PURPOSES =
+            EnumSet.of(PhotoPurpose.CHARACTER, PhotoPurpose.ENCLOSURE);
+
     private final CurrentUser currentUser;
     private final PhotoRepository photoRepository;
     private final AnimalRepository animalRepository;
@@ -55,7 +63,7 @@ public class PhotoService {
     /**
      * 128px 썸네일을 만들고, keepOriginal이면서 원본 사진 보관에 동의한 사용자면 긴 변 1600px로 줄인 원본도 보관한다.
      * 동의하지 않았으면 원본은 보관하지 않고 originalKept=false로 알려준다. 모두 JPG로 저장한다.
-     * 원본을 보관하지 않는 캐릭터 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
+     * 원본을 보관하지 않는 캐릭터·사육장 사진은 AI 분석용으로 긴 변 1024px 사본을 하루만 둔다.
      *
      * @throws BusinessException 오늘(KST) 올린 사진이 하루 제한에 닿았으면 PHOTO_LIMIT_EXCEEDED
      */
@@ -67,7 +75,7 @@ public class PhotoService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
         User user = lockUserWithinDailyLimit(userId);
         boolean keep = keepOriginal && consentService.isAgreed(userId, ConsentType.KEEP_ORIGINAL);
-        boolean keepAnalysisCopy = !keep && purpose == PhotoPurpose.CHARACTER;
+        boolean keepAnalysisCopy = !keep && ANALYZED_PURPOSES.contains(purpose);
         byte[] bytes = read(file);
         List<byte[]> images = keep
                 ? imageResizer.toJpegs(bytes, THUMBNAIL_SIZE, ORIGINAL_SIZE)

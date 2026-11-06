@@ -61,7 +61,9 @@ public class AnimalController {
         return ApiResponse.success(animalService.update(animalId, request));
     }
 
-    @Operation(summary = "평소 사육장 변경", description = "home은 desert, forest, rock, night, pond. 대소문자는 가리지 않는다.")
+    @Operation(summary = "평소 사육장 변경",
+            description = "home(desert, forest, rock, night, pond, 대소문자 무관)과 enclosureId(내 사육장) 중 하나만 보낸다. "
+                    + "사진 테마면 응답의 home은 null이고 enclosureId가 그 사육장.")
     @PatchMapping("/{animalId}/home")
     public ApiResponse<AnimalHomeResponse> changeHome(@PathVariable Long animalId,
                                                       @Valid @RequestBody AnimalHomeRequest request) {

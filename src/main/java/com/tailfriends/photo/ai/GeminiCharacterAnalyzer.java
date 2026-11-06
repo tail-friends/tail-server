@@ -1,13 +1,8 @@
 package com.tailfriends.photo.ai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tailfriends.global.exception.BusinessException;
-import com.tailfriends.global.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -16,23 +11,16 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 /**
- * Gemini API(generateContent)로 사진을 분석한다. 답은 정해진 JSON 형식(responseSchema)으로 받는다.
- * 키는 URL이 아닌 헤더로 보내 로그에 남지 않게 한다.
+ * Gemini로 사진을 분석해 캐릭터 값을 만든다.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class GeminiCharacterAnalyzer implements CharacterAnalyzer {
-
-    static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
-    static final String API_KEY_HEADER = "x-goog-api-key";
 
     private static final Set<String> SHAPES = Set.of("gecko", "lizard", "snake", "turtle");
     private static final Set<String> PATTERN_TYPES = Set.of("spots", "bands", "stripes", "none");
@@ -63,60 +51,15 @@ public class GeminiCharacterAnalyzer implements CharacterAnalyzer {
                     "guess", Map.of("type", "STRING")),
             "required", List.of("isReptile", "shape", "patternType", "colors", "extra", "guess"));
 
-    private final RestClient aiRestClient;
-    private final AiProperties properties;
-    private final ObjectMapper objectMapper;
+    private final GeminiClient geminiClient;
 
     @Override
     public CharacterAnalysis analyze(byte[] jpeg) {
-        if (!StringUtils.hasText(properties.apiKey())) {
-            log.warn("AI 키(AI_API_KEY)가 설정되지 않아 분석할 수 없어요");
-            throw unavailable();
-        }
-        Answer answer = parse(request(jpeg));
+        Answer answer = geminiClient.generate(PROMPT, RESPONSE_SCHEMA, jpeg, Answer.class);
         if (!Boolean.TRUE.equals(answer.isReptile())) {
             return CharacterAnalysis.notReptile();
         }
         return toAnalysis(answer);
-    }
-
-    private String request(byte[] jpeg) {
-        Map<String, Object> body = Map.of(
-                "contents", List.of(Map.of("parts", List.of(
-                        Map.of("text", PROMPT),
-                        Map.of("inlineData", Map.of(
-                                "mimeType", MediaType.IMAGE_JPEG_VALUE,
-                                "data", Base64.getEncoder().encodeToString(jpeg)))))),
-                "generationConfig", Map.of(
-                        "temperature", 0.2,
-                        "responseMimeType", MediaType.APPLICATION_JSON_VALUE,
-                        "responseSchema", RESPONSE_SCHEMA));
-        try {
-            GenerateResponse response = aiRestClient.post()
-                    .uri(BASE_URL + properties.model() + ":generateContent")
-                    .header(API_KEY_HEADER, properties.apiKey())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(GenerateResponse.class);
-            return response.text();
-        } catch (RestClientException e) {
-            // 무료 사용량을 다 쓴 경우(429)도 여기로 온다
-            log.warn("Gemini 호출 실패: {}", e.getMessage());
-            throw unavailable();
-        } catch (RuntimeException e) {
-            log.warn("Gemini 응답을 읽지 못했어요", e);
-            throw unavailable();
-        }
-    }
-
-    private Answer parse(String text) {
-        try {
-            return objectMapper.readValue(text, Answer.class);
-        } catch (JsonProcessingException | IllegalArgumentException e) {
-            log.warn("Gemini 답이 JSON이 아니에요: {}", text);
-            throw unavailable();
-        }
     }
 
     private CharacterAnalysis toAnalysis(Answer answer) {
@@ -128,7 +71,7 @@ public class GeminiCharacterAnalyzer implements CharacterAnalyzer {
                 || !isColor(colors.body()) || !isColor(colors.pattern())
                 || !isColor(colors.belly()) || !isColor(colors.eye())) {
             log.warn("Gemini 답이 형식에 맞지 않아요: {}", answer);
-            throw unavailable();
+            throw GeminiClient.unavailable();
         }
         return new CharacterAnalysis(
                 true,
@@ -177,38 +120,6 @@ public class GeminiCharacterAnalyzer implements CharacterAnalyzer {
         }
         String trimmed = value.trim();
         return trimmed.length() > GUESS_MAX_LENGTH ? trimmed.substring(0, GUESS_MAX_LENGTH) : trimmed;
-    }
-
-    private static BusinessException unavailable() {
-        return new BusinessException(ErrorCode.AI_UNAVAILABLE);
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record GenerateResponse(List<Candidate> candidates) {
-
-        /**
-         * 첫 후보의 첫 텍스트. 안전 필터 등으로 답이 없으면 예외.
-         */
-        String text() {
-            if (candidates == null || candidates.isEmpty() || candidates.get(0).content() == null
-                    || candidates.get(0).content().parts() == null
-                    || candidates.get(0).content().parts().isEmpty()) {
-                throw new IllegalStateException("Gemini 답이 비어 있어요");
-            }
-            return candidates.get(0).content().parts().get(0).text();
-        }
-
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record Candidate(Content content) {
-        }
-
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record Content(List<Part> parts) {
-        }
-
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record Part(String text) {
-        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

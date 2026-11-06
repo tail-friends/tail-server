@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 케어 포인트 적립·사용 내역. 개체나 기록을 지우면 animal·log는 null이 되고 내역은 남는다.
- * 적립은 중복을 DB 유니크 인덱스로 막으려고 PointHistoryRepository.insertEarning으로 넣는다.
+ * 적립은 중복을 DB 유니크 인덱스로 막으려고 PointHistoryRepository.insertEarning으로 넣는다. 사용은 purchase로 만든다.
  */
 @Getter
 @Entity
@@ -57,4 +57,15 @@ public class PointHistory extends BaseTimeEntity {
      * 기록한 날(KST). 같은 개체·같은 이유는 이 날짜에 한 번만 적립한다.
      */
     private LocalDate earnedDate;
+
+    /**
+     * 상점 아이템 구매. amount는 -가격이고 earnedDate는 없다.
+     */
+    public static PointHistory purchase(User user, int price) {
+        PointHistory history = new PointHistory();
+        history.user = user;
+        history.amount = -price;
+        history.reason = PointReason.PURCHASE;
+        return history;
+    }
 }
