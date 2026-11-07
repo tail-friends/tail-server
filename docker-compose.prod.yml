@@ -1,0 +1,41 @@
+# 운영 서버용. 이미지는 CI가 GHCR에 올린 것을 쓴다 (배포 워크플로가 IMAGE_TAG를 넘긴다).
+# 서버의 /opt/tail-server/.env 에 운영 환경 변수를 둔다 (.env.example 참고, SPRING_PROFILES_ACTIVE=prod).
+services:
+  postgres:
+    image: postgres:16
+    container_name: tailfriends-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tailfriends}
+      POSTGRES_USER: ${POSTGRES_USER:-tailfriends}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: UTC
+      PGTZ: UTC
+    # DB 포트는 밖으로 열지 않는다
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/tail-friends/tail-server:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: tailfriends-server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tailfriends}
+      STORAGE_LOCAL_PATH: /app/storage
+    ports:
+      - "8080:8080"
+    volumes:
+      - photo-data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  photo-data:
