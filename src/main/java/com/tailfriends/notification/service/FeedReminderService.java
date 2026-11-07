@@ -52,8 +52,8 @@ public class FeedReminderService {
         LocalTime from = windowStart(ZonedDateTime.now(clock.withZone(KstDate.ZONE)).toLocalTime());
         LocalTime to = from.plusMinutes(WINDOW_MINUTES);
         // 23:50 구간은 다음 날 00:00까지
-        List<Long> userIds = pushTokenRepository.findUserIdsToNotify(from, to.equals(LocalTime.MIDNIGHT)
-                ? LocalTime.MAX : to);
+        List<Long> userIds = pushTokenRepository.findUserIdsToNotify(from.toString(),
+                to.equals(LocalTime.MIDNIGHT) ? "24:00:00" : to.toString());
         if (userIds.isEmpty()) {
             return 0;
         }
