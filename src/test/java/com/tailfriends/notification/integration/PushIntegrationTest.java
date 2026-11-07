@@ -100,7 +100,8 @@ class PushIntegrationTest extends IntegrationTestSupport {
     @Test
     void 알림_시간에_동의한_사용자에게_급여일_푸시를_보내고_쓸_수_없는_토큰은_지운다() throws Exception {
         // KST 21:30 구간
-        Clock clock = Clock.fixed(ZonedDateTime.of(2026, 11, 7, 21, 34, 0, 0, KstDate.ZONE).toInstant(), ZoneOffset.UTC);
+        Clock clock = Clock.fixed(
+                ZonedDateTime.of(2026, 11, 7, 21, 34, 0, 0, KstDate.ZONE).toInstant(), ZoneOffset.UTC);
         LocalDate today = KstDate.today(Clock.systemUTC());
 
         User agreed = saveUser();
@@ -159,7 +160,8 @@ class PushIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void 자정_직전_구간은_23시_59분_알림도_보낸다() throws Exception {
-        Clock clock = Clock.fixed(ZonedDateTime.of(2026, 11, 7, 23, 50, 0, 0, KstDate.ZONE).toInstant(), ZoneOffset.UTC);
+        Clock clock = Clock.fixed(
+                ZonedDateTime.of(2026, 11, 7, 23, 50, 0, 0, KstDate.ZONE).toInstant(), ZoneOffset.UTC);
         User user = saveUser();
         String token = token(user);
         feed(token, createAnimal(token, "망고", 4), KstDate.today(Clock.systemUTC()).minusDays(4));
