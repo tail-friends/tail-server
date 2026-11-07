@@ -47,7 +47,7 @@ public class PhotoService {
      * AI로 분석하는 사진. 원본을 보관하지 않아도 분석용 사본을 둔다.
      */
     private static final Set<PhotoPurpose> ANALYZED_PURPOSES =
-            EnumSet.of(PhotoPurpose.CHARACTER, PhotoPurpose.ENCLOSURE);
+            EnumSet.of(PhotoPurpose.CHARACTER, PhotoPurpose.ENCLOSURE, PhotoPurpose.HEALTH);
 
     private final CurrentUser currentUser;
     private final PhotoRepository photoRepository;

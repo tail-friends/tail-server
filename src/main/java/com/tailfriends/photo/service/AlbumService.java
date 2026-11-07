@@ -4,15 +4,19 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
+import com.tailfriends.health.repository.HealthCheckRepository;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.AlbumPhotoResponse;
 import com.tailfriends.photo.dto.AlbumResponse;
+import com.tailfriends.photo.dto.HealthCheckSummary;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,7 @@ public class AlbumService {
     private final AnimalRepository animalRepository;
     private final PhotoRepository photoRepository;
     private final PhotoStorage photoStorage;
+    private final HealthCheckRepository healthCheckRepository;
 
     /**
      * 최신순. cursor는 이전 페이지의 마지막 photoId다.
@@ -53,8 +58,27 @@ public class AlbumService {
         boolean hasNext = photos.size() > size;
         List<Photo> page = hasNext ? photos.subList(0, size) : photos;
         Long nextCursor = hasNext ? page.getLast().getId() : null;
+        Map<Long, HealthCheckSummary> checks = latestChecksOf(page);
         return new AlbumResponse(page.stream()
-                .map(photo -> AlbumPhotoResponse.of(photo, photoStorage.urlOf(photo.getThumbnailKey())))
+                .map(photo -> AlbumPhotoResponse.of(photo, photoStorage.urlOf(photo.getThumbnailKey()),
+                        checks.get(photo.getId())))
                 .toList(), nextCursor);
+    }
+
+    /**
+     * 사진 ID별로 가장 최근 건강 체크 요약. 쿼리 한 번으로 조회한다.
+     */
+    private Map<Long, HealthCheckSummary> latestChecksOf(List<Photo> photos) {
+        if (photos.isEmpty()) {
+            return Map.of();
+        }
+        return healthCheckRepository.findAllByPhotoIdIn(photos.stream().map(Photo::getId).toList()).stream()
+                .collect(Collectors.toMap(
+                        check -> check.getPhoto().getId(),
+                        check -> check,
+                        (a, b) -> a.getId() > b.getId() ? a : b))
+                .entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        e -> new HealthCheckSummary(e.getValue().getId(), e.getValue().attentionCount())));
     }
 }

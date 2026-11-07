@@ -71,6 +71,22 @@ public class HealthAlertService {
                 .toList();
     }
 
+    static final String HEALTH_CHECK_ATTENTION_MESSAGE = "사진 건강 체크에서 확인이 필요한 부분이 있어요";
+
+    /**
+     * 사진 건강 체크에 "확인 필요" 항목이 있을 때 경고를 연다. 열린 같은 종류의 경고가 있으면 새로 만들지 않는다.
+     */
+    @Transactional
+    public List<AlertResponse> openForHealthCheck(Animal animal) {
+        if (alertRepository.existsByAnimalIdAndTypeAndStatus(
+                animal.getId(), AlertType.HEALTH_CHECK_ATTENTION, AlertStatus.OPEN)) {
+            return List.of();
+        }
+        HealthAlert alert = alertRepository.save(
+                HealthAlert.open(animal, AlertType.HEALTH_CHECK_ATTENTION, HEALTH_CHECK_ATTENTION_MESSAGE));
+        return List.of(AlertResponse.from(alert));
+    }
+
     /**
      * 최신순. animalId가 없으면 내 전체 개체, status가 없으면 모든 상태. cursor는 이전 페이지의 마지막 경고 ID다.
      */
