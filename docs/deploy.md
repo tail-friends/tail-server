@@ -62,6 +62,7 @@ sudo chmod 600 /opt/tail-server/.env
 | `STORAGE_PUBLIC_URL` | 운영 도메인 기준 `/files` 주소 |
 | `CORS_ALLOWED_ORIGINS` | 운영 앱·웹 origin |
 | `AI_API_KEY` | Gemini API 키 |
+| `FCM_CREDENTIALS` | Firebase 서비스 계정 키 JSON을 Base64로 한 줄. 비우면 푸시를 보내지 않는다 |
 | `DEV_LOGIN_ENABLED` | **넣지 않는다.** 켜면 서버가 시작되지 않는다 |
 
 `DB_URL`과 `STORAGE_LOCAL_PATH`는 `docker-compose.prod.yml`이 덮어쓰므로 적지 않아도 된다.

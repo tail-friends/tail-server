@@ -8,11 +8,13 @@ import com.tailfriends.auth.dto.TokenResponse;
 import com.tailfriends.auth.service.OAuthService;
 import com.tailfriends.auth.service.TokenService;
 import com.tailfriends.global.response.ApiResponse;
+import com.tailfriends.notification.service.PushTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +30,7 @@ public class AuthController {
 
     private final OAuthService oauthService;
     private final TokenService tokenService;
+    private final PushTokenService pushTokenService;
 
     @Operation(summary = "소셜 로그인",
             description = "앱이 받은 인가 코드로 가입 또는 로그인하고 토큰을 발급한다. 처음 로그인하면 isNewUser: true. "
@@ -43,10 +46,14 @@ public class AuthController {
         return ApiResponse.success(tokenService.reissue(request.refreshToken()));
     }
 
-    @Operation(summary = "로그아웃", description = "리프레시 토큰을 폐기한다. 본문 없이 204.")
+    @Operation(summary = "로그아웃",
+            description = "리프레시 토큰을 폐기한다. pushToken을 보내면 이 기기의 푸시 토큰도 지운다. 본문 없이 204.")
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@Valid @RequestBody LogoutRequest request) {
         tokenService.revoke(request.refreshToken());
+        if (StringUtils.hasText(request.pushToken())) {
+            pushTokenService.unregister(request.pushToken());
+        }
     }
 }

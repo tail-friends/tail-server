@@ -80,6 +80,10 @@ ai:
   api-key: ${AI_API_KEY:}
   daily-attempt-limit: ${AI_DAILY_ATTEMPT_LIMIT:10}
 
+# 서버 푸시 (FCM). Firebase 서비스 계정 키(JSON)를 Base64로. 비어 있으면 푸시를 보내지 않는다.
+fcm:
+  credentials: ${FCM_CREDENTIALS:}
+
 # 로컬 테스트 로그인 (POST /api/v1/dev/login). 소셜 키 없이 토큰을 받는다. 운영 프로필에서 켜면 서버가 뜨지 않는다.
 dev:
   login:
