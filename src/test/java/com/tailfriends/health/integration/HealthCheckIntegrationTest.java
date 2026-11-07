@@ -97,7 +97,8 @@ class HealthCheckIntegrationTest extends IntegrationTestSupport {
 
         // 두 번째 체크는 직전 체크 사진과 비교한다. 열린 경고가 있으면 새로 만들지 않는다.
         long second = upload(token, animalId, "HEALTH");
-        given(healthCheckAnalyzer.analyze(any(), notNull(), any())).willReturn(new HealthCheckAnalysis(true, ATTENTION));
+        given(healthCheckAnalyzer.analyze(any(), notNull(), any()))
+                .willReturn(new HealthCheckAnalysis(true, ATTENTION));
         check(token, second).andExpect(status().isOk());
         verify(healthCheckAnalyzer).analyze(any(), notNull(), any());
         mockMvc.perform(get("/api/v1/health/alerts").header(HttpHeaders.AUTHORIZATION, token)
