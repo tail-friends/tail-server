@@ -15,10 +15,16 @@ import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.CurrentUserStub;
+import com.tailfriends.health.domain.HealthCheck;
+import com.tailfriends.health.domain.HealthCheckItem;
+import com.tailfriends.health.domain.HealthCheckKey;
+import com.tailfriends.health.domain.HealthCheckResult;
+import com.tailfriends.health.repository.HealthCheckRepository;
 import com.tailfriends.photo.domain.Photo;
 import com.tailfriends.photo.domain.PhotoPurpose;
 import com.tailfriends.photo.dto.AlbumPhotoResponse;
 import com.tailfriends.photo.dto.AlbumResponse;
+import com.tailfriends.photo.dto.HealthCheckSummary;
 import com.tailfriends.photo.repository.PhotoRepository;
 import com.tailfriends.photo.storage.PhotoStorage;
 import java.math.BigDecimal;
@@ -38,8 +44,9 @@ class AlbumServiceTest {
     private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final PhotoRepository photoRepository = mock(PhotoRepository.class);
     private final PhotoStorage photoStorage = mock(PhotoStorage.class);
-    private final AlbumService service =
-            new AlbumService(CurrentUserStub.of(USER_ID), animalRepository, photoRepository, photoStorage);
+    private final HealthCheckRepository healthCheckRepository = mock(HealthCheckRepository.class);
+    private final AlbumService service = new AlbumService(
+            CurrentUserStub.of(USER_ID), animalRepository, photoRepository, photoStorage, healthCheckRepository);
 
     @Test
     void 사육장_사진을_뺀_용도로_최신순_한_페이지를_돌려주고_더_있으면_커서를_준다() {
@@ -76,6 +83,22 @@ class AlbumServiceTest {
     }
 
     @Test
+    void 건강_체크한_사진은_가장_최근_체크의_ID와_확인_필요_수를_담는다() {
+        Photo checked = photo(301L);
+        given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(mock(Animal.class)));
+        given(photoRepository.findAlbumPage(eq(12L), any(), eq(Long.MAX_VALUE), any()))
+                .willReturn(List.of(photo(302L), checked));
+        given(healthCheckRepository.findAllByPhotoIdIn(List.of(302L, 301L))).willReturn(List.of(
+                check(55L, checked, HealthCheckResult.ATTENTION),
+                check(60L, checked, HealthCheckResult.GOOD)));
+
+        AlbumResponse response = service.getAlbum(12L, null, 20);
+
+        assertThat(response.photos().get(0).healthCheck()).isNull();
+        assertThat(response.photos().get(1).healthCheck()).isEqualTo(new HealthCheckSummary(60L, 0));
+    }
+
+    @Test
     void 남의_개체면_ANIMAL_NOT_FOUND() {
         given(animalRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.empty());
 
@@ -84,6 +107,13 @@ class AlbumServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.ANIMAL_NOT_FOUND);
         verify(photoRepository, never()).findAlbumPage(any(), any(), any(Long.class), any());
+    }
+
+    private static HealthCheck check(Long id, Photo photo, HealthCheckResult eyes) {
+        HealthCheck check = HealthCheck.of(mock(Animal.class), photo,
+                List.of(new HealthCheckItem(HealthCheckKey.EYES, eyes, null)));
+        ReflectionTestUtils.setField(check, "id", id);
+        return check;
     }
 
     private static Photo photo(Long id) {

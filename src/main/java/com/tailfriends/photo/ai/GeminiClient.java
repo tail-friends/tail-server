@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -38,24 +39,33 @@ public class GeminiClient {
      * @throws BusinessException 키가 없거나, 호출에 실패하거나, 답이 JSON이 아니면 AI_UNAVAILABLE
      */
     public <T> T generate(String prompt, Map<String, Object> responseSchema, byte[] jpeg, Class<T> answerType) {
+        return generate(prompt, responseSchema, List.of(jpeg), answerType);
+    }
+
+    /**
+     * 사진 여러 장을 보낸다. 프롬프트에서 사진 순서로 가리킨다(첫 번째 사진, 두 번째 사진).
+     */
+    public <T> T generate(String prompt, Map<String, Object> responseSchema, List<byte[]> jpegs,
+                          Class<T> answerType) {
         if (!StringUtils.hasText(properties.apiKey())) {
             log.warn("AI 키(AI_API_KEY)가 설정되지 않아 분석할 수 없어요");
             throw unavailable();
         }
-        return parse(request(prompt, responseSchema, jpeg), answerType);
+        return parse(request(prompt, responseSchema, jpegs), answerType);
     }
 
     static BusinessException unavailable() {
         return new BusinessException(ErrorCode.AI_UNAVAILABLE);
     }
 
-    private String request(String prompt, Map<String, Object> responseSchema, byte[] jpeg) {
+    private String request(String prompt, Map<String, Object> responseSchema, List<byte[]> jpegs) {
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("text", prompt));
+        jpegs.forEach(jpeg -> parts.add(Map.of("inlineData", Map.of(
+                "mimeType", MediaType.IMAGE_JPEG_VALUE,
+                "data", Base64.getEncoder().encodeToString(jpeg)))));
         Map<String, Object> body = Map.of(
-                "contents", List.of(Map.of("parts", List.of(
-                        Map.of("text", prompt),
-                        Map.of("inlineData", Map.of(
-                                "mimeType", MediaType.IMAGE_JPEG_VALUE,
-                                "data", Base64.getEncoder().encodeToString(jpeg)))))),
+                "contents", List.of(Map.of("parts", parts)),
                 "generationConfig", Map.of(
                         "temperature", 0.2,
                         "responseMimeType", MediaType.APPLICATION_JSON_VALUE,
