@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Health")
 @RestController
 @RequiredArgsConstructor
-public class HealthCheckController {
+public class PhotoHealthCheckController {
 
     private final HealthCheckService healthCheckService;
 
