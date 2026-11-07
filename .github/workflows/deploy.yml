@@ -1,0 +1,95 @@
+name: Deploy
+
+# main의 CI(빌드·테스트·이미지 게시)가 성공하면 그 커밋의 이미지를 운영 서버에 배포한다
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "배포할 이미지 태그 (예: sha-1a2b3c4). 비우면 main 최신 커밋"
+        required: false
+
+# 동시에 두 번 배포되지 않도록 순서대로 처리한다
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy to prod
+    # CI가 실패한 실행은 배포하지 않는다
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: prod
+
+    steps:
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          elif [ -n "$RUN_SHA" ]; then
+            tag="sha-${RUN_SHA::7}"
+          else
+            tag="sha-${GITHUB_SHA::7}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "배포할 이미지: $tag"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            # 미리 등록해 둔 서버 호스트 키로만 접속한다. 키가 다르면 ssh/scp가 실패한다.
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS 시크릿이 없어 접속 시점의 호스트 키를 신뢰합니다. 시크릿을 등록해 고정하세요."
+            ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Upload compose file
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          scp -i ~/.ssh/deploy_key -P "${SSH_PORT:-22}" \
+            docker-compose.prod.yml "$SSH_USER@$SSH_HOST:/opt/tail-server/docker-compose.yml"
+
+      - name: Pull, restart and health check
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scp -i ~/.ssh/deploy_key -P "${SSH_PORT:-22}" \
+            .github/scripts/deploy-remote.sh "$SSH_USER@$SSH_HOST:/opt/tail-server/deploy.sh"
+          # 토큰은 명령줄이 아니라 표준 입력으로 넘긴다
+          printf '%s\n' "$GHCR_TOKEN" | ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
+            "IMAGE_TAG='$IMAGE_TAG' GHCR_USER='$GHCR_USER' bash /opt/tail-server/deploy.sh"
