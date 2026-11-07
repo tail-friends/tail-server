@@ -124,6 +124,7 @@ com.tailfriends
 ├─ inventory 먹이 재고
 ├─ breeding  번식 기록 (산란, 해칭 개체 등록)
 ├─ today     오늘 할 일 (여러 도메인을 모아 보여주기만 한다)
+├─ notification 서버 푸시 (푸시 토큰, FCM 발송, 급여일 알림)
 └─ admin     관리자
 ```
 
