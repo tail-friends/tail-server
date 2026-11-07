@@ -2,6 +2,7 @@ package com.tailfriends.auth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -13,6 +14,7 @@ import com.tailfriends.auth.dto.OAuthLoginResponse;
 import com.tailfriends.auth.dto.TokenResponse;
 import com.tailfriends.auth.service.OAuthService;
 import com.tailfriends.auth.service.TokenService;
+import com.tailfriends.notification.service.PushTokenService;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
@@ -36,6 +38,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private TokenService tokenService;
+
+    @MockitoBean
+    private PushTokenService pushTokenService;
 
     @Test
     void 인증_없이_소셜_로그인하고_명세_형식으로_응답한다() throws Exception {
@@ -122,6 +127,18 @@ class AuthControllerTest {
                 .andExpect(content().string(""));
 
         verify(tokenService).revoke("my-refresh");
+        verify(pushTokenService).unregister("push");
+    }
+
+    @Test
+    @WithMockUserId(5L)
+    void 로그아웃에_푸시_토큰이_없으면_푸시_토큰은_건드리지_않는다() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"my-refresh\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(pushTokenService, never()).unregister(any());
     }
 
     @Test
