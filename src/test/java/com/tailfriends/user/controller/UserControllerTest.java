@@ -43,7 +43,8 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.nickname").value("김성찬"))
                 .andExpect(jsonPath("$.data.email").value("keeper@example.com"))
                 .andExpect(jsonPath("$.data.points").value(120))
-                .andExpect(jsonPath("$.data.animalCount").value(3));
+                .andExpect(jsonPath("$.data.animalCount").value(3))
+                .andExpect(jsonPath("$.data.role").value("KEEPER"));
     }
 
     @Test
