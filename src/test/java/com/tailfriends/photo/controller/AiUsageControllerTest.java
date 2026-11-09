@@ -9,7 +9,7 @@ import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
 import com.tailfriends.photo.dto.AiUsageResponse;
 import com.tailfriends.photo.service.AiUsageService;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -30,7 +30,7 @@ class AiUsageControllerTest {
     @WithMockUserId(7L)
     void 오늘_AI_분석_횟수를_명세_형식으로_돌려준다() throws Exception {
         given(aiUsageService.getTodayUsage()).willReturn(
-                new AiUsageResponse(5, 3, OffsetDateTime.parse("2026-10-19T00:00:00+09:00")));
+                new AiUsageResponse(5, 3, Instant.parse("2026-10-18T15:00:00Z")));
 
         mockMvc.perform(get("/api/v1/photos/ai-usage"))
                 .andExpect(status().isOk())

@@ -36,6 +36,6 @@ public class AiUsageService {
         long attempted = aiUsageRepository.countByUserIdAndCreatedAtGreaterThanEqual(userId, startOfToday);
         int used = attempted >= aiProperties.dailyAttemptLimit() ? limit : (int) Math.min(succeeded, limit);
         return new AiUsageResponse(limit, used,
-                today.plusDays(1).atStartOfDay(KstDate.ZONE).toOffsetDateTime());
+                today.plusDays(1).atStartOfDay(KstDate.ZONE).toInstant());
     }
 }

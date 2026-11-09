@@ -38,7 +38,7 @@ class AiUsageServiceTest {
     void 다시_채워지는_시각은_다음_날_KST_0시다() {
         givenCounts(0, 0);
 
-        assertThat(service.getTodayUsage().resetsAt().toInstant())
+        assertThat(service.getTodayUsage().resetsAt())
                 .isEqualTo(Instant.parse("2026-10-21T15:00:00Z"));
     }
 
