@@ -28,6 +28,7 @@ ext {
     springdocVersion = '2.8.17'
     thumbnailatorVersion = '0.4.20'
     googleAuthVersion = '1.30.0'
+    openPdfVersion = '2.0.3'
 }
 
 dependencies {
@@ -44,6 +45,7 @@ dependencies {
 
     implementation "net.coobird:thumbnailator:${thumbnailatorVersion}"
     implementation "com.google.auth:google-auth-library-oauth2-http:${googleAuthVersion}"
+    implementation "com.github.librepdf:openpdf:${openPdfVersion}"
 
     implementation 'org.flywaydb:flyway-core'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
