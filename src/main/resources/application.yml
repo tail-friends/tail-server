@@ -43,6 +43,26 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# 모니터링 (액추에이터). 관리 포트는 API 포트와 따로 두고 밖으로 게시하지 않는다.
+# 프로메테우스는 같은 도커 네트워크에서 {app}:8081/actuator/prometheus 를 수집한다.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      # 그라파나에서 p95·p99 응답 시간을 계산할 수 있게 히스토그램을 남긴다
+      percentiles-histogram:
+        http.server.requests: true
+
 # 소셜 로그인 앱 키. 비어 있으면 그 방식으로는 로그인할 수 없다.
 oauth:
   kakao:
