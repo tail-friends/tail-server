@@ -43,6 +43,12 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# 톰캣 스레드 지표(tomcat_threads_*)를 내보내려면 MBean 등록을 켜야 한다
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
 # 모니터링 (액추에이터). 관리 포트는 API 포트와 따로 두고 밖으로 게시하지 않는다.
 # 프로메테우스는 같은 도커 네트워크에서 {app}:8081/actuator/prometheus 를 수집한다.
 management:
