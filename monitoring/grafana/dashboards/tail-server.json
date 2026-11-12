@@ -230,7 +230,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"tail-server\", uri!~\"/actuator.*\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"tail-server\", uri!~\"/actuator.*\"}[5m])), 1e-9)",
+          "expr": "(sum(rate(http_server_requests_seconds_count{application=\"tail-server\", uri!~\"/actuator.*\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"tail-server\", uri!~\"/actuator.*\"}[5m])), 1e-9)",
           "instant": true
         }
       ],
