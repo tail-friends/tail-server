@@ -31,12 +31,49 @@ services:
       STORAGE_LOCAL_PATH: /app/storage
     ports:
       - "8080:8080"
+      - "8081:8081"   # 관리 포트 (프로메테우스 수집용)
     volumes:
       - photo-data:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
 
+  # 모니터링까지 띄울 때만: docker compose --profile monitoring up -d
+  # 서버(bootRun 또는 --profile app)의 관리 포트 8081을 수집한다. 그라파나: http://localhost:3000 (포트가 겹치면 GRAFANA_PORT·PROMETHEUS_PORT로 바꾼다. admin / GRAFANA_ADMIN_PASSWORD, 기본 admin)
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v3.12.0
+    container_name: tailfriends-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # 리눅스에서도 호스트의 서버를 찾을 수 있게
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:13.0.2
+    container_name: tailfriends-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   postgres-data:
   photo-data:
+  prometheus-data:
+  grafana-data:

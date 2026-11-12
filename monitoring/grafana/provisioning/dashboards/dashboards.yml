@@ -1,0 +1,13 @@
+# monitoring/grafana/dashboards 폴더의 JSON을 대시보드로 불러온다.
+# 화면에서 고친 내용은 저장되지 않으니, 바꿀 대시보드는 JSON을 내보내 이 폴더에 커밋한다.
+apiVersion: 1
+
+providers:
+  - name: tail-friends
+    folder: 꼬리친구
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

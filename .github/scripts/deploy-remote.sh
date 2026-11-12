@@ -30,6 +30,8 @@ docker compose up -d --remove-orphans
 
 if wait_healthy; then
   echo "$IMAGE_TAG" > current_tag
+  # 바뀐 프로메테우스 설정을 다시 읽는다. 모니터링 문제로 배포를 실패시키지는 않는다
+  docker compose kill -s SIGHUP prometheus > /dev/null 2>&1 || echo "WARN: 프로메테우스 설정을 다시 읽지 못했습니다"
   echo "OK: $IMAGE_TAG 배포 완료"
   docker image prune -f > /dev/null
   exit 0
