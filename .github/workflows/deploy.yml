@@ -70,7 +70,7 @@ jobs:
             ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
           fi
 
-      - name: Upload compose file
+      - name: Upload compose and monitoring files
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -78,6 +78,9 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy_key -P "${SSH_PORT:-22}" \
             docker-compose.prod.yml "$SSH_USER@$SSH_HOST:/opt/tail-server/docker-compose.yml"
+          # 모니터링 설정(프로메테우스·그라파나). 지운 파일이 남지 않도록 폴더를 통째로 바꾼다
+          tar -czf - monitoring | ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
+            "rm -rf /opt/tail-server/monitoring && tar -xzf - -C /opt/tail-server"
 
       - name: Pull, restart and health check
         env:
