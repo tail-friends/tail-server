@@ -1,0 +1,15 @@
+# 로컬용 (docker-compose.yml의 monitoring 프로필).
+# ./gradlew bootRun이든 --profile app이든 서버 관리 포트(8081)가 호스트에 열려 있으므로 호스트를 수집한다.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: tail-server
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
