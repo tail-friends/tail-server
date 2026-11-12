@@ -24,6 +24,9 @@ public class SecurityConfig {
             "/api/v1/auth/reissue",
             "/api/v1/dev/login", // dev.login.enabled일 때만 컨트롤러가 생긴다. 꺼져 있으면 404
             "/api/v1/health-check",
+            // 액추에이터는 관리 포트(management.server.port)에만 생기고, 그 포트는 밖으로 게시하지 않는다
+            "/actuator/health",
+            "/actuator/prometheus",
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/error"

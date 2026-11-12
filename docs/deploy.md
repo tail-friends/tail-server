@@ -5,11 +5,12 @@
 
 ## 배포가 하는 일
 
-1. `docker-compose.prod.yml`을 서버의 `/opt/tail-server/docker-compose.yml`로 올린다.
+1. `docker-compose.prod.yml`을 서버의 `/opt/tail-server/docker-compose.yml`로, `monitoring/` 폴더를 `/opt/tail-server/monitoring`으로 올린다.
 2. `deploy-remote.sh`를 서버에서 실행한다: GHCR 로그인 → `docker compose pull app` → `up -d` → `/api/v1/health-check`를 최대 3분 확인.
-3. 실패하면 `/opt/tail-server/current_tag`에 적힌 이전 태그로 되돌리고, 이번 배포는 실패로 끝낸다.
+3. 성공하면 프로메테우스에 SIGHUP을 보내 바뀐 수집 설정을 다시 읽게 한다.
+4. 실패하면 `/opt/tail-server/current_tag`에 적힌 이전 태그로 되돌리고, 이번 배포는 실패로 끝낸다.
 
-서버에는 DB(PostgreSQL), 앱 컨테이너, 사진 볼륨이 docker compose로 함께 뜬다. DB 포트는 밖으로 열지 않는다.
+서버에는 DB(PostgreSQL), 앱 컨테이너, 사진 볼륨, 모니터링(프로메테우스·그라파나)이 docker compose로 함께 뜬다. DB·프로메테우스·관리 포트(8081)는 밖으로 열지 않고, 그라파나는 서버의 127.0.0.1:3000에만 연다.
 
 ## 1. 서버 준비
 
@@ -63,6 +64,7 @@ sudo chmod 600 /opt/tail-server/.env
 | `CORS_ALLOWED_ORIGINS` | 운영 앱·웹 origin |
 | `AI_API_KEY` | Gemini API 키 |
 | `FCM_CREDENTIALS` | Firebase 서비스 계정 키 JSON을 Base64로 한 줄. 비우면 푸시를 보내지 않는다 |
+| `GRAFANA_ADMIN_PASSWORD` | 그라파나 admin 비밀번호. 강한 값. **없으면 `docker compose`가 실패해 배포가 되지 않는다** |
 | `DEV_LOGIN_ENABLED` | **넣지 않는다.** 켜면 서버가 시작되지 않는다 |
 
 `DB_URL`과 `STORAGE_LOCAL_PATH`는 `docker-compose.prod.yml`이 덮어쓰므로 적지 않아도 된다.
@@ -71,6 +73,7 @@ sudo chmod 600 /opt/tail-server/.env
 
 - SSH 포트와 앱이 쓰는 포트(8080, 또는 앞단 프록시를 쓰면 80/443)만 연다.
 - 5432(DB)는 열지 않는다. compose가 이미 포트를 게시하지 않는다.
+- 8081(관리 포트), 9090(프로메테우스), 3000(그라파나)도 열지 않는다. compose가 앞의 둘은 게시하지 않고, 그라파나는 127.0.0.1에만 게시한다.
 - HTTPS는 이 배포에 포함돼 있지 않다. 도메인과 리버스 프록시(Nginx, Caddy 등)를 앞에 두고 8080으로 넘기는 구성을 따로 준비한다.
 
 ## 2. SSH 키
@@ -130,7 +133,23 @@ docker compose logs --tail 100 app
 curl -i http://localhost:8080/api/v1/health-check
 ```
 
-## 6. 롤백·재배포
+## 6. 모니터링
+
+그라파나는 밖으로 열지 않으므로 SSH 터널로 접속한다.
+
+```bash
+# 내 PC에서. 접속해 둔 동안 http://localhost:3000 이 서버의 그라파나다
+ssh -N -L 3000:127.0.0.1:3000 deploy@<서버 주소>
+```
+
+- 로그인: `admin` / `.env`의 `GRAFANA_ADMIN_PASSWORD`
+- 대시보드 → 꼬리친구 → **꼬리친구 서버**
+- 프로메테우스를 직접 보려면 서버에서 `docker compose exec prometheus wget -qO- localhost:9090/api/v1/targets`
+- 지표는 15일 또는 2GB까지 보관한다(`docker-compose.prod.yml`의 `--storage.tsdb.retention.*`).
+- 대시보드 JSON은 배포 뒤 30초 안에 다시 불러온다. 데이터소스 설정(`monitoring/grafana/provisioning/datasources`)을 바꿨다면 `docker compose restart grafana`가 필요하다.
+- `GRAFANA_ADMIN_PASSWORD`는 그라파나를 처음 만들 때만 적용된다(볼륨에 저장). 나중에 바꾸려면 `docker compose exec grafana grafana cli admin reset-admin-password <새 비밀번호>`.
+
+## 7. 롤백·재배포
 
 - 이전 버전으로 되돌리기: Actions → Deploy → Run workflow → `image_tag`에 이전 태그(예: `sha-1a2b3c4`). 태그는 GHCR 패키지 목록이나 이전 Deploy 실행 로그에서 찾는다.
 - 배포가 헬스 체크에 실패하면 스크립트가 직전 태그로 자동 복구한다. 이 경우에도 Deploy 실행은 실패로 표시되니 원인을 고친 뒤 다시 배포한다.
@@ -145,4 +164,6 @@ curl -i http://localhost:8080/api/v1/health-check
 | `permission denied ... docker.sock` | `deploy` 사용자가 `docker` 그룹인지 (그룹 추가 후 재접속 필요) |
 | `pull access denied` / `denied` | 패키지 읽기 권한, Deploy 잡의 `packages: read` |
 | 헬스 체크 실패, 서버가 안 뜸 | `docker compose logs app`. 대부분 `.env`의 누락·오타, DB 비밀번호 불일치, `DEV_LOGIN_ENABLED=true` |
+| `GRAFANA_ADMIN_PASSWORD is required` | 서버 `.env`에 `GRAFANA_ADMIN_PASSWORD`를 넣는다 |
+| 그라파나 대시보드에 데이터가 없음 | 프로메테우스 타깃(`app:8081`)이 UP인지. 서버가 관리 포트 8081을 열었는지(`docker compose logs app`의 `Tomcat started on port 8081`) |
 | DB 비밀번호를 바꿨는데 접속 실패 | Postgres는 처음 만들 때의 비밀번호를 볼륨에 저장한다. `.env`만 바꾸면 반영되지 않는다 |

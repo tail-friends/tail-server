@@ -36,6 +36,42 @@ services:
       postgres:
         condition: service_healthy
 
+  # 모니터링. 서버의 관리 포트(8081)는 게시하지 않고 같은 네트워크에서 app:8081을 수집한다.
+  # 프로메테우스는 밖으로 열지 않는다.
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    container_name: tailfriends-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+      # 배포 때 설정 파일이 바뀌면 SIGHUP으로 다시 읽는다 (deploy-remote.sh)
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  # 그라파나는 서버의 127.0.0.1에만 연다. SSH 터널로 접속한다 (docs/deploy.md).
+  grafana:
+    image: grafana/grafana:13.0.2
+    container_name: tailfriends-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   postgres-data:
   photo-data:
+  prometheus-data:
+  grafana-data:
