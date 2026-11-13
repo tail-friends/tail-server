@@ -133,6 +133,7 @@ docker compose --profile monitoring up -d
 - 그라파나: http://localhost:3000 (admin / `.env`의 `GRAFANA_ADMIN_PASSWORD`, 비우면 `admin`)
   - 대시보드 → 꼬리친구 → **꼬리친구 서버** (요청 수, 응답 시간, 에러, JVM, DB 커넥션)
 - 프로메테우스: http://localhost:9090 (Status → Targets에서 `tail-server`가 UP인지 확인)
+- 모니터링만 띄워도 `.env`에 `POSTGRES_PASSWORD`가 있어야 합니다. `docker compose`가 실행할 서비스와 상관없이 파일 전체의 변수를 먼저 확인하기 때문입니다. 없으면 `required variable POSTGRES_PASSWORD is missing a value`로 실패합니다.
 - 포트가 겹치면 `.env`에 `GRAFANA_PORT`, `PROMETHEUS_PORT`를 넣습니다.
 - 대시보드는 `monitoring/grafana/dashboards/*.json`에서 불러옵니다. 화면에서 고친 내용은 저장되지 않으니, 바꿀 때는 JSON을 내보내 이 폴더에 커밋합니다.
 - 끄기: `docker compose --profile monitoring down`
