@@ -6,9 +6,10 @@
 ## 배포가 하는 일
 
 1. `docker-compose.prod.yml`을 서버의 `/opt/tail-server/docker-compose.yml`로, `monitoring/` 폴더를 `/opt/tail-server/monitoring`으로 올린다.
-2. `deploy-remote.sh`를 서버에서 실행한다: GHCR 로그인 → `docker compose pull app` → `up -d` → `/api/v1/health-check`를 최대 3분 확인.
+2. `deploy-remote.sh`를 서버에서 실행한다: GHCR 로그인 → `docker compose pull app` → `.env`의 `IMAGE_TAG`를 이번 태그로 적음 → `up -d` → `/api/v1/health-check`를 최대 3분 확인.
 3. 성공하면 프로메테우스에 SIGHUP을 보내 바뀐 수집 설정을 다시 읽게 한다.
-4. 실패하면 `/opt/tail-server/current_tag`에 적힌 이전 태그로 되돌리고, 이번 배포는 실패로 끝낸다.
+4. 실패하면 `/opt/tail-server/current_tag`에 적힌 이전 태그로 되돌리고(`.env`의 `IMAGE_TAG`도 되돌린다), 이번 배포는 실패로 끝낸다.
+5. 결과를 Discord로 알린다. 성공은 알림만, 실패·롤백은 배포한 사람을 태그한다(아래 "배포 알림").
 
 서버에는 DB(PostgreSQL), 앱 컨테이너, 사진 볼륨, 모니터링(프로메테우스·그라파나)이 docker compose로 함께 뜬다. DB·프로메테우스·관리 포트(8081)는 밖으로 열지 않고, 그라파나는 서버의 127.0.0.1:3000에만 연다.
 
@@ -111,6 +112,8 @@ ssh-keyscan -p <포트> <서버 주소>
 | `SSH_PRIVATE_KEY` | `tail-deploy` 개인 키 전체 (BEGIN/END 줄 포함) |
 | `SSH_KNOWN_HOSTS` | `ssh-keyscan` 결과. 비워 두면 접속 시점의 키를 그대로 신뢰해 경고가 뜬다 |
 
+배포 알림은 PR 알림과 같은 저장소 시크릿 `DISCORD_WEBHOOK_URL`과 변수 `DISCORD_USER_MAP`을 쓴다. 따로 등록할 것이 없다.
+
 GHCR 로그인은 워크플로의 `GITHUB_TOKEN`(`packages: read`)으로 하므로 따로 등록할 것이 없다.
 패키지가 다른 저장소에 연결돼 있으면 Packages → tail-server → Package settings에서 이 저장소에 읽기 권한을 준다.
 
@@ -128,10 +131,25 @@ GHCR 로그인은 워크플로의 `GITHUB_TOKEN`(`packages: read`)으로 하므�
 ssh deploy@<서버 주소>
 cd /opt/tail-server
 cat current_tag                          # 지금 떠 있는 태그
-docker compose ps                        # postgres, app 모두 running/healthy
+docker compose ps                        # postgres, app, prometheus, grafana 모두 running (postgres는 healthy)
 docker compose logs --tail 100 app
 curl -i http://localhost:8080/api/v1/health-check
 ```
+
+- `docker-compose.prod.yml`은 이미지 태그를 `IMAGE_TAG`로 받는다. 배포 스크립트가 `.env`에 적어 두므로 서버에서 `docker compose`를 그대로 쓰면 된다. `.env`의 `IMAGE_TAG`는 직접 고치지 않는다. 다른 버전은 Deploy로 띄운다.
+- `.env`는 `deploy` 사용자만 읽을 수 있다(600). 다른 계정(예: `ubuntu`)으로 접속했다면 `sudo -u deploy docker compose ps`처럼 `deploy`로 실행한다.
+- `required variable IMAGE_TAG is missing a value`가 나오면 이 방식이 들어간 뒤 아직 배포한 적이 없는 것이다. Deploy를 한 번 실행하거나, 그 전까지는 `IMAGE_TAG=$(cat current_tag) docker compose ps`로 쓴다.
+
+## 배포 알림
+
+Deploy가 끝나면 Discord(PR 알림과 같은 채널)로 결과를 보낸다. 취소된 실행은 보내지 않는다.
+
+| 알림 | 뜻 | 할 일 |
+|---|---|---|
+| 🚀 배포했어요 | 헬스 체크 통과 | 없음 |
+| ⚠️ 이전 버전으로 되돌렸어요 | 새 버전이 헬스 체크 실패, 직전 태그로 복구됨 | 실행 로그의 컨테이너 로그로 원인을 고치고 다시 배포 |
+| 🚨 이전 버전으로도 되돌리지 못했어요 | 서버가 내려가 있을 수 있음 | 서버에 접속해 `docker compose ps`, `logs app`을 바로 확인 |
+| 🚨 배포가 실패했어요 | 컨테이너를 바꾸기 전 단계에서 실패 (`.env` 누락, SSH, pull 등) | 실행 로그에서 실패한 단계 확인. 서버는 이전 버전 그대로일 가능성이 높다 |
 
 ## 6. 모니터링
 
@@ -164,6 +182,7 @@ ssh -N -L 3000:127.0.0.1:3000 deploy@<서버 주소>
 | `permission denied ... docker.sock` | `deploy` 사용자가 `docker` 그룹인지 (그룹 추가 후 재접속 필요) |
 | `pull access denied` / `denied` | 패키지 읽기 권한, Deploy 잡의 `packages: read` |
 | 헬스 체크 실패, 서버가 안 뜸 | `docker compose logs app`. 대부분 `.env`의 누락·오타, DB 비밀번호 불일치, `DEV_LOGIN_ENABLED=true` |
-| `GRAFANA_ADMIN_PASSWORD is required` | 서버 `.env`에 `GRAFANA_ADMIN_PASSWORD`를 넣는다 |
+| `GRAFANA_ADMIN_PASSWORD is required` | 서버 `.env`에 `GRAFANA_ADMIN_PASSWORD`를 넣는다. `.env`는 `deploy` 소유라 `echo "..." \| sudo -u deploy tee -a .env`로 추가한다 |
+| `IMAGE_TAG is required` (서버에서 직접 실행할 때) | 위 "5. 확인" 참고 |
 | 그라파나 대시보드에 데이터가 없음 | 프로메테우스 타깃(`app:8081`)이 UP인지. 서버가 관리 포트 8081을 열었는지(`docker compose logs app`의 `Tomcat started on port 8081`) |
 | DB 비밀번호를 바꿨는데 접속 실패 | Postgres는 처음 만들 때의 비밀번호를 볼륨에 저장한다. `.env`만 바꾸면 반영되지 않는다 |
