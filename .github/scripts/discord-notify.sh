@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # GitHub 이벤트를 Discord 웹훅으로 알린다.
 #
-# 사용법: discord-notify.sh <pr-opened | pr-merged | review | ci-failed>
+# 사용법: discord-notify.sh <pr-opened | pr-merged | review | ci-failed | deploy>
 #
 # 공통 환경 변수
 #   DISCORD_WEBHOOK_URL       Discord 채널 웹훅 주소 (시크릿)
@@ -13,9 +13,10 @@
 # pr-merged: PR_TITLE, PR_URL, PR_NUMBER, PR_AUTHOR, PR_BASE, PR_BODY, PR_MERGED_BY
 # review:    PR_TITLE, PR_URL, PR_NUMBER, PR_AUTHOR, REVIEW_STATE, REVIEW_AUTHOR, REVIEW_BODY, REVIEW_URL
 # ci-failed: CI_BRANCH, CI_ACTOR, CI_COMMIT_SHA, CI_COMMIT_MESSAGE, CI_RUN_URL
+# deploy:    DEPLOY_RESULT(success | failed | rolled-back | rollback-failed), DEPLOY_TAG, DEPLOY_ACTOR, DEPLOY_RUN_URL
 set -euo pipefail
 
-kind=${1:?"알림 종류가 필요합니다: pr-opened | pr-merged | review | ci-failed"}
+kind=${1:?"알림 종류가 필요합니다: pr-opened | pr-merged | review | ci-failed | deploy"}
 
 # 붙여 넣을 때 섞인 공백·줄바꿈을 지운다
 webhook_url=$(printf '%s' "${DISCORD_WEBHOOK_URL:-}" | tr -d '[:space:]')
@@ -191,11 +192,51 @@ ci_failed() {
     "$(jq -n --argjson a "$(field "커밋" "${CI_COMMIT_SHA:0:7}")" --argjson b "$(field "푸시한 사람" "$CI_ACTOR")" '[$a, $b]')")"
 }
 
+# 운영 배포 결과. 성공은 알리기만 하고, 실패·롤백은 배포한 사람을 태그한다
+deploy() {
+  local headline color description actor_mention
+  actor_mention=$(mention "$DEPLOY_ACTOR")
+  case "${DEPLOY_RESULT:-}" in
+    success)
+      headline="🚀 운영 서버에 배포했어요."
+      color=5763719
+      description="헬스 체크를 통과했어요."
+      ;;
+    rolled-back)
+      headline="$actor_mention ⚠️ 운영 배포가 실패해 이전 버전으로 되돌렸어요."
+      color=16705372
+      description="새 버전이 헬스 체크를 통과하지 못했어요. 서버는 이전 버전으로 돌고 있어요. 실행 로그의 컨테이너 로그를 확인하세요."
+      ;;
+    rollback-failed)
+      headline="$actor_mention 🚨 운영 배포가 실패했고 이전 버전으로도 되돌리지 못했어요. 서버가 내려가 있을 수 있어요."
+      color=15548997
+      description='서버에 접속해 `docker compose ps`, `docker compose logs app`을 바로 확인하세요.'
+      ;;
+    *)
+      headline="$actor_mention 🚨 운영 배포가 실패했어요."
+      color=15548997
+      description="실행 로그에서 실패한 단계를 확인하세요. (서버 .env 누락, SSH 접속, 이미지 pull 등)"
+      ;;
+  esac
+
+  send "$(message \
+    "$headline" \
+    "Deploy ${DEPLOY_TAG:-알 수 없음}" \
+    "$DEPLOY_RUN_URL" \
+    "$description" \
+    "$color" \
+    "$(jq -n \
+      --argjson a "$(field "이미지" "${DEPLOY_TAG:-알 수 없음}")" \
+      --argjson b "$(field "실행한 사람" "$DEPLOY_ACTOR")" \
+      '[$a, $b]')")"
+}
+
 case "$kind" in
   pr-opened) pr_opened ;;
   pr-merged) pr_merged ;;
   review) review ;;
   ci-failed) ci_failed ;;
+  deploy) deploy ;;
   *)
     echo "::error::알 수 없는 알림 종류: $kind"
     exit 1
