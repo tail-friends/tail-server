@@ -96,6 +96,33 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy_key -P "${SSH_PORT:-22}" \
             .github/scripts/deploy-remote.sh "$SSH_USER@$SSH_HOST:/opt/tail-server/deploy.sh"
+          # 서버 출력을 남겨 두고 알림에서 롤백 여부를 판단한다. tee를 거쳐도 ssh의 실패가 단계 실패가 되게 한다
+          set -o pipefail
           # 토큰은 명령줄이 아니라 표준 입력으로 넘긴다
           printf '%s\n' "$GHCR_TOKEN" | ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
-            "IMAGE_TAG='$IMAGE_TAG' GHCR_USER='$GHCR_USER' bash /opt/tail-server/deploy.sh"
+            "IMAGE_TAG='$IMAGE_TAG' GHCR_USER='$GHCR_USER' bash /opt/tail-server/deploy.sh" 2>&1 \
+            | tee "$RUNNER_TEMP/deploy.log"
+
+      # 성공·실패 모두 알린다. 취소된 실행은 알리지 않는다. 알림이 실패해도 배포 결과는 바꾸지 않는다
+      - name: Notify Discord
+        if: success() || failure()
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_MAP: ${{ vars.DISCORD_USER_MAP }}
+          JOB_STATUS: ${{ job.status }}
+          DEPLOY_TAG: ${{ steps.tag.outputs.tag }}
+          DEPLOY_ACTOR: ${{ github.triggering_actor }}
+          DEPLOY_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          log="$RUNNER_TEMP/deploy.log"
+          if [ "$JOB_STATUS" = success ]; then
+            result=success
+          elif grep -q '^ROLLBACK OK' "$log" 2>/dev/null; then
+            result=rolled-back
+          elif grep -q '^ROLLBACK FAIL' "$log" 2>/dev/null; then
+            result=rollback-failed
+          else
+            result=failed
+          fi
+          DEPLOY_RESULT=$result .github/scripts/discord-notify.sh deploy
