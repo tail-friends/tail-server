@@ -22,10 +22,21 @@ wait_healthy() {
   return 1
 }
 
+# 띄울 태그를 .env의 IMAGE_TAG에도 적는다. 서버에서 IMAGE_TAG 없이 docker compose ps/logs/up을 바로 쓸 수 있다.
+# .env는 app의 env_file이기도 해서, up 뒤에 바꾸면 다음 수동 up 때 app이 다시 만들어진다. 그래서 up 전에 적는다.
+set_image_tag() {
+  if grep -q '^IMAGE_TAG=' .env; then
+    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$1/" .env
+  else
+    printf '\n# 배포 스크립트가 적는다. 직접 고치지 않는다\nIMAGE_TAG=%s\n' "$1" >> .env
+  fi
+}
+
 PREVIOUS_TAG=$(cat current_tag 2>/dev/null || true)
 
 export IMAGE_TAG
 docker compose pull app || exit 1
+set_image_tag "$IMAGE_TAG" || exit 1
 docker compose up -d --remove-orphans
 
 if wait_healthy; then
@@ -43,6 +54,7 @@ docker compose logs --tail 80 app || true
 if [ -n "$PREVIOUS_TAG" ]; then
   echo "이전 버전($PREVIOUS_TAG)으로 롤백합니다"
   export IMAGE_TAG="$PREVIOUS_TAG"
+  set_image_tag "$PREVIOUS_TAG"
   docker compose up -d
   if wait_healthy; then
     echo "ROLLBACK OK: 이전 버전으로 복구했습니다. 이번 배포는 실패입니다"
