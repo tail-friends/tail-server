@@ -166,4 +166,27 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     List<Log> findAllByUserIdAndClientIdIn(Long userId, Collection<UUID> clientIds);
 
     List<Log> findAllByUserIdAndBatchIdOrderByIdAsc(Long userId, UUID batchId);
+
+    /**
+     * 내보내기용 내 기록. 개체(animalId)와 기간(from, to 포함)은 null이면 거르지 않는다.
+     * 기록일 오름차순, 같은 날이면 개체·저장 순서. 개체 이름을 쓰므로 개체를 함께 가져온다.
+     * 날짜가 null이면 PostgreSQL이 파라미터 타입을 정하지 못해서 cast로 알려 준다.
+     */
+    @Query("""
+            select l from Log l join fetch l.animal
+            where l.user.id = :userId
+              and (:animalId is null or l.animal.id = :animalId)
+              and (cast(:from as LocalDate) is null or l.logDate >= :from)
+              and (cast(:to as LocalDate) is null or l.logDate <= :to)
+            order by l.logDate asc, l.animal.id asc, l.id asc
+            """)
+    List<Log> findForExport(@Param("userId") Long userId,
+                            @Param("animalId") Long animalId,
+                            @Param("from") LocalDate from,
+                            @Param("to") LocalDate to);
+
+    /**
+     * 개체의 기간 안 기록(from, to 포함), 기록일 오름차순. 수의사용 리포트에 쓴다.
+     */
+    List<Log> findAllByAnimalIdAndLogDateBetweenOrderByLogDateAscIdAsc(Long animalId, LocalDate from, LocalDate to);
 }
