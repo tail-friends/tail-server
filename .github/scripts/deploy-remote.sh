@@ -11,6 +11,18 @@ trap 'rm -rf "$DOCKER_CONFIG"' EXIT
 read -r GHCR_TOKEN
 printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || exit 1
 
+# 매일 백업(backup.sh)을 deploy 사용자 crontab에 등록한다. 이전에 등록한 줄은 지우고 다시 적어 시각을 바꿔도 반영된다.
+# 백업 등록 문제로 배포를 실패시키지는 않는다
+install_backup_cron() {
+  local marker='# tail-server backup (deploy.sh가 관리)'
+  local line='30 18 * * * bash /opt/tail-server/backup.sh >> /opt/tail-server/backups/backup.log 2>&1'
+  mkdir -p backups && chmod 700 backups
+  { crontab -l 2>/dev/null | grep -vF -e "$marker" -e '/opt/tail-server/backup.sh' || true
+    printf '%s\n%s\n' "$marker" "$line"
+  } | crontab -
+}
+install_backup_cron || echo "WARN: 백업 cron을 등록하지 못했습니다"
+
 # 부팅에 20~40초 걸리므로 최대 3분까지 기다린다
 wait_healthy() {
   for _ in $(seq 1 60); do
