@@ -13,6 +13,7 @@ import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
+import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.dto.MeResponse;
 import com.tailfriends.user.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class UserControllerTest {
     @Test
     @WithMockUserId(1L)
     void 내_정보를_명세_형식으로_돌려준다() throws Exception {
-        given(userService.getMe()).willReturn(new MeResponse(1L, "김성찬", "keeper@example.com", 120, 3));
+        given(userService.getMe()).willReturn(new MeResponse(1L, "김성찬", "keeper@example.com", 120, 3, Role.KEEPER));
 
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isOk())
@@ -42,7 +43,8 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.nickname").value("김성찬"))
                 .andExpect(jsonPath("$.data.email").value("keeper@example.com"))
                 .andExpect(jsonPath("$.data.points").value(120))
-                .andExpect(jsonPath("$.data.animalCount").value(3));
+                .andExpect(jsonPath("$.data.animalCount").value(3))
+                .andExpect(jsonPath("$.data.role").value("KEEPER"));
     }
 
     @Test
