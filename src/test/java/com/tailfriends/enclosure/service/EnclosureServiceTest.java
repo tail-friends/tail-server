@@ -10,17 +10,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.tailfriends.animal.domain.Animal;
+import com.tailfriends.animal.repository.AnimalRepository;
 import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.domain.Enclosure;
+import com.tailfriends.enclosure.domain.EnclosureAnimal;
 import com.tailfriends.enclosure.domain.EnclosureDecoration;
 import com.tailfriends.enclosure.domain.EnclosureObject;
 import com.tailfriends.enclosure.dto.BackgroundResponse;
 import com.tailfriends.enclosure.dto.DecorationRequest;
 import com.tailfriends.enclosure.dto.DecorationResponse;
 import com.tailfriends.enclosure.dto.DecorationsUpdateRequest;
+import com.tailfriends.enclosure.dto.EnclosureAnimalsResponse;
+import com.tailfriends.enclosure.dto.EnclosureAnimalsUpdateRequest;
 import com.tailfriends.enclosure.dto.EnclosureResponse;
 import com.tailfriends.enclosure.dto.EnclosureSummaryResponse;
 import com.tailfriends.enclosure.repository.DecorationCount;
+import com.tailfriends.enclosure.repository.EnclosureAnimalRepository;
 import com.tailfriends.enclosure.repository.EnclosureDecorationRepository;
 import com.tailfriends.enclosure.repository.EnclosureObjectRepository;
 import com.tailfriends.enclosure.repository.EnclosureRepository;
@@ -50,8 +56,11 @@ class EnclosureServiceTest {
     private final UserItemRepository userItemRepository = mock(UserItemRepository.class);
     private final EnclosureObjectRepository objectRepository = mock(EnclosureObjectRepository.class);
     private final ShopItemRepository shopItemRepository = mock(ShopItemRepository.class);
+    private final EnclosureAnimalRepository enclosureAnimalRepository = mock(EnclosureAnimalRepository.class);
+    private final AnimalRepository animalRepository = mock(AnimalRepository.class);
     private final EnclosureService service = new EnclosureService(CurrentUserStub.of(USER_ID), enclosureRepository,
-            decorationRepository, objectRepository, userItemRepository, shopItemRepository);
+            decorationRepository, objectRepository, userItemRepository, shopItemRepository,
+            enclosureAnimalRepository, animalRepository);
 
     @Test
     void 기본_테마_사육장이_다_있지_않으면_다섯_테마를_모두_넣어_본다() {
@@ -93,18 +102,79 @@ class EnclosureServiceTest {
     }
 
     @Test
-    void 상세는_장식을_그리는_순서로_주고_합사_전까지_animalIds는_비어_있다() {
+    void 상세는_장식을_그리는_순서로_주고_합사_개체를_저장한_순서로_준다() {
         Enclosure desert = enclosure(3L, Home.DESERT);
         given(enclosureRepository.findByIdAndUserId(3L, USER_ID)).willReturn(Optional.of(desert));
         given(decorationRepository.findAllByEnclosureIdOrderByIdAsc(3L)).willReturn(List.of(
                 decoration(desert, 21L, "0.300", true), decoration(desert, 22L, "0.850", false)));
+        given(enclosureAnimalRepository.findAnimalIdsByEnclosureId(3L)).willReturn(List.of(15L, 12L));
 
         EnclosureResponse response = service.getEnclosure(3L);
 
         assertThat(response.background().type()).isEqualTo(BackgroundType.BUILT_IN);
         assertThat(response.decorations()).extracting(DecorationResponse::itemId).containsExactly(21L, 22L);
         assertThat(response.decorations().getFirst().x()).isEqualTo(0.3);
-        assertThat(response.animalIds()).isEmpty();
+        assertThat(response.animalIds()).containsExactly(15L, 12L);
+    }
+
+    @Test
+    void 합사_개체를_보낸_순서대로_통째로_바꾼다() {
+        Enclosure desert = enclosure(3L, Home.DESERT);
+        given(enclosureRepository.findByIdAndUserIdForUpdate(3L, USER_ID)).willReturn(Optional.of(desert));
+        given(animalRepository.findAllByIdInAndUserId(List.of(15L, 12L), USER_ID))
+                .willReturn(List.of(animal(12L), animal(15L)));
+
+        EnclosureAnimalsResponse response = service.updateAnimals(3L, new EnclosureAnimalsUpdateRequest(
+                List.of(15L, 12L)));
+
+        assertThat(response.animalIds()).containsExactly(15L, 12L);
+        verify(enclosureAnimalRepository).deleteAllByEnclosureId(3L);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<EnclosureAnimal>> saved = ArgumentCaptor.forClass(List.class);
+        verify(enclosureAnimalRepository).saveAll(saved.capture());
+        assertThat(saved.getValue()).extracting(link -> link.getAnimal().getId()).containsExactly(15L, 12L);
+        assertThat(saved.getValue()).allMatch(link -> link.getEnclosure() == desert);
+    }
+
+    @Test
+    void 합사_개체를_빈_배열로_보내면_모두_뺀다() {
+        given(enclosureRepository.findByIdAndUserIdForUpdate(3L, USER_ID))
+                .willReturn(Optional.of(enclosure(3L, Home.DESERT)));
+
+        assertThat(service.updateAnimals(3L, new EnclosureAnimalsUpdateRequest(List.of())).animalIds()).isEmpty();
+        verify(enclosureAnimalRepository).deleteAllByEnclosureId(3L);
+        verify(animalRepository, never()).findAllByIdInAndUserId(any(), anyLong());
+    }
+
+    @Test
+    void 같은_개체를_두_번_보내면_INVALID_INPUT이고_바꾸지_않는다() {
+        given(enclosureRepository.findByIdAndUserIdForUpdate(3L, USER_ID))
+                .willReturn(Optional.of(enclosure(3L, Home.DESERT)));
+
+        assertError(() -> service.updateAnimals(3L, new EnclosureAnimalsUpdateRequest(List.of(12L, 12L))),
+                ErrorCode.INVALID_INPUT);
+        verify(enclosureAnimalRepository, never()).deleteAllByEnclosureId(anyLong());
+    }
+
+    @Test
+    void 내_개체가_아닌_것이_하나라도_있으면_ANIMAL_NOT_FOUND이고_바꾸지_않는다() {
+        given(enclosureRepository.findByIdAndUserIdForUpdate(3L, USER_ID))
+                .willReturn(Optional.of(enclosure(3L, Home.DESERT)));
+        given(animalRepository.findAllByIdInAndUserId(List.of(12L, 99L), USER_ID))
+                .willReturn(List.of(animal(12L)));
+
+        assertError(() -> service.updateAnimals(3L, new EnclosureAnimalsUpdateRequest(List.of(12L, 99L))),
+                ErrorCode.ANIMAL_NOT_FOUND);
+        verify(enclosureAnimalRepository, never()).deleteAllByEnclosureId(anyLong());
+    }
+
+    @Test
+    void 남의_사육장에_합사_개체를_설정하면_ENCLOSURE_NOT_FOUND() {
+        given(enclosureRepository.findByIdAndUserIdForUpdate(3L, USER_ID)).willReturn(Optional.empty());
+
+        assertError(() -> service.updateAnimals(3L, new EnclosureAnimalsUpdateRequest(List.of(12L))),
+                ErrorCode.ENCLOSURE_NOT_FOUND);
+        verify(enclosureAnimalRepository, never()).deleteAllByEnclosureId(anyLong());
     }
 
     @Test
@@ -212,6 +282,12 @@ class EnclosureServiceTest {
                 .y(new BigDecimal("0.850"))
                 .flip(flip)
                 .build();
+    }
+
+    private static Animal animal(Long id) {
+        Animal animal = BeanUtils.instantiateClass(Animal.class);
+        ReflectionTestUtils.setField(animal, "id", id);
+        return animal;
     }
 
     private static ShopItem shopItem(Long id) {
