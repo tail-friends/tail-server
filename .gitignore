@@ -22,6 +22,9 @@ out/
 # 로컬 사진 저장소
 /storage/
 
+# 백업 스크립트를 로컬·CI에서 돌렸을 때 생기는 폴더
+/backups/
+
 # Logs
 *.log
 
