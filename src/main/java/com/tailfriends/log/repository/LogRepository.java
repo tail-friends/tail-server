@@ -154,6 +154,17 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     List<FedFood> findLatestFedFoods(@Param("animalId") Long animalId, Pageable pageable);
 
     /**
+     * 여러 개체의 가장 최근에 먹은 급여 기록("안 먹음" 제외)을 한 번에 조회한다. 개체마다 한 줄, 급여 기록이 없는 개체는 결과에 없다.
+     */
+    @Query(value = """
+            SELECT DISTINCT ON (l.animal_id) l.animal_id AS "animalId", l.food AS "food", l.food_count AS "count"
+            FROM logs l
+            WHERE l.animal_id IN (:animalIds) AND l.type = 'FEED' AND l.refused = false
+            ORDER BY l.animal_id, l.log_date DESC, l.id DESC
+            """, nativeQuery = true)
+    List<LatestFedFood> findLatestFedFoodsOf(@Param("animalIds") Collection<Long> animalIds);
+
+    /**
      * 그 날짜에 남긴 내 기록, 저장한 순.
      */
     @Query("""
