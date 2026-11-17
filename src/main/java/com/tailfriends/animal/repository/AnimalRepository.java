@@ -18,4 +18,9 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
      * 번식 기록들에서 해칭한 개체. ID 오름차순.
      */
     List<Animal> findAllByBreedingIdInOrderByIdAsc(Collection<Long> breedingIds);
+
+    /**
+     * 주어진 ID 중 이 사용자의 개체. 남의 개체와 없는 ID는 빠진다.
+     */
+    List<Animal> findAllByIdInAndUserId(Collection<Long> ids, Long userId);
 }

@@ -140,6 +140,7 @@ com.tailfriends
 
 - 컨트롤러는 항상 `ApiResponse<T>`를 반환한다. 성공은 `ApiResponse.success(data)`, 데이터가 없으면 `ApiResponse.success()`.
   - 예외: 명세가 `204`(본문 없음)인 API는 `@ResponseStatus(HttpStatus.NO_CONTENT)`와 `void`로 반환한다. (예: 로그아웃)
+  - 예외: 명세가 파일(`text/csv`, `application/pdf`)인 API는 `global/util/FileResponses.attachment(...)`로 `ResponseEntity<byte[]>`를 반환한다. 실패는 다른 API처럼 `BusinessException`으로 던져 JSON 에러가 나간다. (예: 기록 내보내기, 수의사용 리포트)
 - 실패는 `throw new BusinessException(ErrorCode.XXX)`로 던진다. 컨트롤러에서 직접 에러 응답을 만들지 않는다.
   - 실패 응답에도 data가 필요하면(예: `DUPLICATE_CLIENT_ID`의 기존 기록 ID) `new BusinessException(code, message, data)`로 던진다.
 - 새 에러 코드는 `global/exception/ErrorCode`에 추가하고, 노션 API 명세서의 공통 에러 코드 표에도 추가한다.

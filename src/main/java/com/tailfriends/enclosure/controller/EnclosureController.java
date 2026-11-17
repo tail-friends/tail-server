@@ -2,6 +2,8 @@ package com.tailfriends.enclosure.controller;
 
 import com.tailfriends.enclosure.dto.DecorationListResponse;
 import com.tailfriends.enclosure.dto.DecorationsUpdateRequest;
+import com.tailfriends.enclosure.dto.EnclosureAnimalsResponse;
+import com.tailfriends.enclosure.dto.EnclosureAnimalsUpdateRequest;
 import com.tailfriends.enclosure.dto.EnclosureCreateRequest;
 import com.tailfriends.enclosure.dto.EnclosureCreateResponse;
 import com.tailfriends.enclosure.dto.EnclosureListResponse;
@@ -40,7 +42,7 @@ public class EnclosureController {
         return ApiResponse.success(enclosureService.getEnclosures());
     }
 
-    @Operation(summary = "사육장 상세", description = "배경, 장식(그리는 순서), animalIds(합사 보기 전까지 빈 배열).")
+    @Operation(summary = "사육장 상세", description = "배경, 장식(그리는 순서), animalIds(합사 보기로 함께 띄울 개체).")
     @GetMapping("/{enclosureId}")
     public ApiResponse<EnclosureResponse> getEnclosure(@PathVariable Long enclosureId) {
         return ApiResponse.success(enclosureService.getEnclosure(enclosureId));
@@ -52,6 +54,15 @@ public class EnclosureController {
     public ApiResponse<DecorationListResponse> updateDecorations(@PathVariable Long enclosureId,
                                                                  @Valid @RequestBody DecorationsUpdateRequest request) {
         return ApiResponse.success(enclosureService.updateDecorations(enclosureId, request));
+    }
+
+    @Operation(summary = "합사 보기 개체 설정",
+            description = "함께 띄울 개체를 통째로 바꾼다(최대 4마리, 빈 배열이면 모두 뺌). 화면에서만 함께 보이는 기능이다. "
+                    + "같은 개체를 두 번 보내면 400 INVALID_INPUT, 내 개체가 아니면 404 ANIMAL_NOT_FOUND.")
+    @PutMapping("/{enclosureId}/animals")
+    public ApiResponse<EnclosureAnimalsResponse> updateAnimals(
+            @PathVariable Long enclosureId, @Valid @RequestBody EnclosureAnimalsUpdateRequest request) {
+        return ApiResponse.success(enclosureService.updateAnimals(enclosureId, request));
     }
 
     @Operation(summary = "사진으로 만든 테마 저장",

@@ -2,9 +2,7 @@ package com.tailfriends.today.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -21,7 +19,7 @@ import com.tailfriends.health.repository.HealthAlertRepository;
 import com.tailfriends.health.repository.OpenAlert;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.repository.DoneLog;
-import com.tailfriends.log.repository.FedFood;
+import com.tailfriends.log.repository.LatestFedFood;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.repository.AnimalThumbnail;
 import com.tailfriends.photo.repository.PhotoRepository;
@@ -86,10 +84,11 @@ class TodayServiceTest {
 
     @Test
     void 최근_캐릭터_사진과_최근에_먹은_먹이를_채운다() {
-        given(photoRepository.findCharacterThumbnails(anyList())).willReturn(List.of(
-                new AnimalThumbnail(12L, "thumb/new.jpg"), new AnimalThumbnail(12L, "thumb/old.jpg")));
+        given(photoRepository.findCharacterThumbnails(List.of(15L, 12L)))
+                .willReturn(List.of(new AnimalThumbnail(12L, "thumb/new.jpg")));
         given(photoStorage.urlOf("thumb/new.jpg")).willReturn("https://files/thumb/new.jpg");
-        given(logRepository.findLatestFedFoods(eq(12L), any())).willReturn(List.of(new FedFood("귀뚜라미", 6)));
+        given(logRepository.findLatestFedFoodsOf(List.of(15L, 12L)))
+                .willReturn(List.of(new LatestFedFood(12L, "귀뚜라미", 6)));
 
         List<TodayFeed> feeds = service.getToday(null).feeds();
 

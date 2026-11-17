@@ -11,6 +11,18 @@ trap 'rm -rf "$DOCKER_CONFIG"' EXIT
 read -r GHCR_TOKEN
 printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || exit 1
 
+# 매일 백업(backup.sh)을 deploy 사용자 crontab에 등록한다. 이전에 등록한 줄은 지우고 다시 적어 시각을 바꿔도 반영된다.
+# 백업 등록 문제로 배포를 실패시키지는 않는다
+install_backup_cron() {
+  local marker='# tail-server backup (deploy.sh가 관리)'
+  local line='30 18 * * * bash /opt/tail-server/backup.sh >> /opt/tail-server/backups/backup.log 2>&1'
+  mkdir -p backups && chmod 700 backups
+  { crontab -l 2>/dev/null | grep -vF -e "$marker" -e '/opt/tail-server/backup.sh' || true
+    printf '%s\n%s\n' "$marker" "$line"
+  } | crontab -
+}
+install_backup_cron || echo "WARN: 백업 cron을 등록하지 못했습니다"
+
 # 부팅에 20~40초 걸리므로 최대 3분까지 기다린다
 wait_healthy() {
   for _ in $(seq 1 60); do
@@ -22,10 +34,21 @@ wait_healthy() {
   return 1
 }
 
+# 띄울 태그를 .env의 IMAGE_TAG에도 적는다. 서버에서 IMAGE_TAG 없이 docker compose ps/logs/up을 바로 쓸 수 있다.
+# .env는 app의 env_file이기도 해서, up 뒤에 바꾸면 다음 수동 up 때 app이 다시 만들어진다. 그래서 up 전에 적는다.
+set_image_tag() {
+  if grep -q '^IMAGE_TAG=' .env; then
+    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$1/" .env
+  else
+    printf '\n# 배포 스크립트가 적는다. 직접 고치지 않는다\nIMAGE_TAG=%s\n' "$1" >> .env
+  fi
+}
+
 PREVIOUS_TAG=$(cat current_tag 2>/dev/null || true)
 
 export IMAGE_TAG
 docker compose pull app || exit 1
+set_image_tag "$IMAGE_TAG" || exit 1
 docker compose up -d --remove-orphans
 
 if wait_healthy; then
@@ -43,6 +66,7 @@ docker compose logs --tail 80 app || true
 if [ -n "$PREVIOUS_TAG" ]; then
   echo "이전 버전($PREVIOUS_TAG)으로 롤백합니다"
   export IMAGE_TAG="$PREVIOUS_TAG"
+  set_image_tag "$PREVIOUS_TAG"
   docker compose up -d
   if wait_healthy; then
     echo "ROLLBACK OK: 이전 버전으로 복구했습니다. 이번 배포는 실패입니다"

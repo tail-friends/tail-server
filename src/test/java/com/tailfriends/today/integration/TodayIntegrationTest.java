@@ -100,6 +100,30 @@ class TodayIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 추천_먹이는_개체마다_가장_최근_기록이고_같은_날이면_나중에_저장한_기록이다() throws Exception {
+        LocalDate today = KstDate.today(clock);
+        String token = tokenOfNewUser();
+        Integer mango = createAnimal(token, "망고");
+        Integer choco = createAnimal(token, "초코");
+        createLog(token, "{ \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", \"food\": \"귀뚜라미\", \"count\": 6 }"
+                .formatted(mango, today.minusDays(4)));
+        createLog(token, "{ \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", \"food\": \"밀웜\", \"count\": 3 }"
+                .formatted(mango, today.minusDays(4)));
+        createLog(token, "{ \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", \"food\": \"%s\", \"count\": 1 }"
+                .formatted(mango, today.minusDays(5), "해동 마우스"));
+        createLog(token, "{ \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", \"food\": \"핑키\", \"count\": 2 }"
+                .formatted(choco, today.minusDays(6)));
+
+        mockMvc.perform(get("/api/v1/today").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.feeds[*].animalId", contains(choco, mango)))
+                .andExpect(jsonPath("$.data.feeds[0].suggested.food").value("핑키"))
+                .andExpect(jsonPath("$.data.feeds[0].suggested.count").value(2))
+                .andExpect(jsonPath("$.data.feeds[1].suggested.food").value("밀웜"))
+                .andExpect(jsonPath("$.data.feeds[1].suggested.count").value(3));
+    }
+
+    @Test
     void 다른_사용자의_할_일은_보이지_않는다() throws Exception {
         LocalDate today = KstDate.today(clock);
         String owner = tokenOfNewUser();

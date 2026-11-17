@@ -133,6 +133,17 @@ jobs:
             -F 'file=@photo.png;type=image/png' -F "animalId=$animal_id" -F purpose=ALBUM | jq -r '.data.thumbnailUrl')
           curl -fsS -o /dev/null "$thumbnail_url"
 
+      # 운영 백업 스크립트로 위에서 만든 데이터를 백업하고, 임시 DB에 복원해 데이터가 살아 있는지 확인한다
+      - name: Backup and restore check
+        run: |
+          BACKUP_BASE_DIR="$PWD" bash scripts/backup/backup.sh --photos
+          out=$(BACKUP_BASE_DIR="$PWD" bash scripts/backup/restore-check.sh)
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -qE '^ *animals *\| *[1-9]'
+          printf '%s\n' "$out" | grep -qE '^ *photos *\| *[1-9]'
+          printf '%s\n' "$out" | grep -qE '^사진 백업: .*\([1-9][0-9]* 개 파일\)'
+          printf '%s\n' "$out" | grep -q '^OK: 복원 확인 완료'
+
       - name: Show server logs
         if: failure()
         run: docker compose --profile app logs app

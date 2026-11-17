@@ -51,7 +51,24 @@ class UserIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.data.nickname").value("망고집사"))
                 .andExpect(jsonPath("$.data.email").value("keeper@example.com"))
                 .andExpect(jsonPath("$.data.points").value(0))
-                .andExpect(jsonPath("$.data.animalCount").value(2));
+                .andExpect(jsonPath("$.data.animalCount").value(2))
+                .andExpect(jsonPath("$.data.role").value("KEEPER"));
+    }
+
+    @Test
+    void 역할은_토큰이_아니라_요청_때의_DB_역할로_돌려준다() throws Exception {
+        User user = userRepository.save(User.builder()
+                .provider(Provider.KAKAO)
+                .providerId(UUID.randomUUID().toString())
+                .nickname("관리자")
+                .build());
+        String token = "Bearer " + jwtProvider.createAccessToken(user.getId(), Role.KEEPER);
+        user.changeRole(Role.ADMIN);
+        userRepository.save(user);
+
+        mockMvc.perform(get("/api/v1/auth/me").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("ADMIN"));
     }
 
     @Test

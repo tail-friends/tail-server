@@ -20,6 +20,7 @@ import com.tailfriends.enclosure.domain.BackgroundType;
 import com.tailfriends.enclosure.dto.BackgroundResponse;
 import com.tailfriends.enclosure.dto.DecorationListResponse;
 import com.tailfriends.enclosure.dto.DecorationResponse;
+import com.tailfriends.enclosure.dto.EnclosureAnimalsResponse;
 import com.tailfriends.enclosure.dto.EnclosureCreateResponse;
 import com.tailfriends.enclosure.dto.EnclosureListResponse;
 import com.tailfriends.enclosure.dto.EnclosureResponse;
@@ -231,6 +232,45 @@ class EnclosureControllerTest {
                 .andExpect(jsonPath("$.error.code").value("BUILT_IN_THEME"));
 
         verify(photoThemeService).delete(9L);
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 합사_개체를_설정하면_저장된_animalIds를_돌려준다() throws Exception {
+        given(enclosureService.updateAnimals(eq(3L), any()))
+                .willReturn(new EnclosureAnimalsResponse(List.of(12L, 15L)));
+
+        mockMvc.perform(put("/api/v1/enclosures/3/animals").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"animalIds\": [12, 15] }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.animalIds[0]").value(12))
+                .andExpect(jsonPath("$.data.animalIds[1]").value(15));
+        verify(enclosureService).updateAnimals(eq(3L),
+                argThat(request -> request.animalIds().equals(List.of(12L, 15L))));
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 합사_개체가_4마리를_넘거나_없거나_null이면_400() throws Exception {
+        for (String body : List.of("{ \"animalIds\": [1, 2, 3, 4, 5] }", "{ }", "{ \"animalIds\": [1, null] }")) {
+            mockMvc.perform(put("/api/v1/enclosures/3/animals").contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+        }
+        verify(enclosureService, never()).updateAnimals(any(), any());
+    }
+
+    @Test
+    @WithMockUserId(7L)
+    void 내_개체가_아니면_404_ANIMAL_NOT_FOUND() throws Exception {
+        given(enclosureService.updateAnimals(eq(3L), any()))
+                .willThrow(new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
+
+        mockMvc.perform(put("/api/v1/enclosures/3/animals").contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"animalIds\": [99] }"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("ANIMAL_NOT_FOUND"));
     }
 
     @Test
