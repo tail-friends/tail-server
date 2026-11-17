@@ -84,8 +84,8 @@ class TodayServiceTest {
 
     @Test
     void 최근_캐릭터_사진과_최근에_먹은_먹이를_채운다() {
-        given(photoRepository.findCharacterThumbnails(anyList())).willReturn(List.of(
-                new AnimalThumbnail(12L, "thumb/new.jpg"), new AnimalThumbnail(12L, "thumb/old.jpg")));
+        given(photoRepository.findCharacterThumbnails(List.of(15L, 12L)))
+                .willReturn(List.of(new AnimalThumbnail(12L, "thumb/new.jpg")));
         given(photoStorage.urlOf("thumb/new.jpg")).willReturn("https://files/thumb/new.jpg");
         given(logRepository.findLatestFedFoodsOf(List.of(15L, 12L)))
                 .willReturn(List.of(new LatestFedFood(12L, "귀뚜라미", 6)));

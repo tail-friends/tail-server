@@ -27,7 +27,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,11 +92,9 @@ public class TodayService {
     }
 
     private Map<Long, String> latestThumbnails(List<Long> animalIds) {
-        Map<Long, String> thumbnails = new HashMap<>();
-        for (AnimalThumbnail thumbnail : photoRepository.findCharacterThumbnails(animalIds)) {
-            thumbnails.putIfAbsent(thumbnail.animalId(), photoStorage.urlOf(thumbnail.thumbnailKey()));
-        }
-        return thumbnails;
+        return photoRepository.findCharacterThumbnails(animalIds).stream()
+                .collect(Collectors.toMap(AnimalThumbnail::animalId,
+                        thumbnail -> photoStorage.urlOf(thumbnail.thumbnailKey())));
     }
 
     /**
