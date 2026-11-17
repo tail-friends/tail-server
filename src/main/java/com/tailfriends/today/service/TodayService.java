@@ -10,6 +10,7 @@ import com.tailfriends.global.exception.ErrorCode;
 import com.tailfriends.global.security.CurrentUser;
 import com.tailfriends.global.util.KstDate;
 import com.tailfriends.health.repository.HealthAlertRepository;
+import com.tailfriends.log.repository.LatestFedFood;
 import com.tailfriends.log.repository.LogRepository;
 import com.tailfriends.photo.repository.AnimalThumbnail;
 import com.tailfriends.photo.repository.PhotoRepository;
@@ -26,13 +27,12 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,28 +80,29 @@ public class TodayService {
         if (todo.isEmpty()) {
             return List.of();
         }
-        Map<Long, String> thumbnails = latestThumbnails(todo.stream().map(Animal::getId).toList());
+        List<Long> todoIds = todo.stream().map(Animal::getId).toList();
+        Map<Long, String> thumbnails = latestThumbnails(todoIds);
+        Map<Long, Suggested> suggested = suggested(todoIds);
         return todo.stream().map(animal -> {
             FeedSchedule feed = schedules.get(animal.getId());
             Integer overdueDays = feed.status() == FeedStatus.OVERDUE ? -feed.daysLeft() : null;
             return new TodayFeed(animal.getId(), animal.getName(), thumbnails.get(animal.getId()), feed.status(),
-                    overdueDays, suggested(animal.getId()));
+                    overdueDays, suggested.get(animal.getId()));
         }).toList();
     }
 
     private Map<Long, String> latestThumbnails(List<Long> animalIds) {
-        Map<Long, String> thumbnails = new HashMap<>();
-        for (AnimalThumbnail thumbnail : photoRepository.findCharacterThumbnails(animalIds)) {
-            thumbnails.putIfAbsent(thumbnail.animalId(), photoStorage.urlOf(thumbnail.thumbnailKey()));
-        }
-        return thumbnails;
+        return photoRepository.findCharacterThumbnails(animalIds).stream()
+                .collect(Collectors.toMap(AnimalThumbnail::animalId,
+                        thumbnail -> photoStorage.urlOf(thumbnail.thumbnailKey())));
     }
 
-    private Suggested suggested(Long animalId) {
-        return logRepository.findLatestFedFoods(animalId, PageRequest.of(0, 1)).stream()
-                .findFirst()
-                .map(food -> new Suggested(food.food(), food.count()))
-                .orElse(null);
+    /**
+     * 개체 ID별 최근에 먹은 먹이. 먹은 기록이 없는 개체는 없다.
+     */
+    private Map<Long, Suggested> suggested(List<Long> animalIds) {
+        return logRepository.findLatestFedFoodsOf(animalIds).stream()
+                .collect(Collectors.toMap(LatestFedFood::animalId, food -> new Suggested(food.food(), food.count())));
     }
 
     private List<TodaySchedule> schedules(Long userId, LocalDate today) {
