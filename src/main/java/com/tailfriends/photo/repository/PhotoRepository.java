@@ -49,12 +49,13 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
                               @Param("before") long before, Pageable limit);
 
     /**
-     * 개체들의 캐릭터용 사진 썸네일, 최신순. 개체마다 첫 번째가 가장 최근 사진이다.
+     * 개체들의 가장 최근 캐릭터용 사진 썸네일. 개체마다 한 줄, 캐릭터용 사진이 없는 개체는 결과에 없다.
      */
-    @Query("""
-            select new com.tailfriends.photo.repository.AnimalThumbnail(p.animal.id, p.thumbnailKey) from Photo p
-            where p.animal.id in :animalIds and p.purpose = com.tailfriends.photo.domain.PhotoPurpose.CHARACTER
-            order by p.id desc
-            """)
+    @Query(value = """
+            SELECT DISTINCT ON (p.animal_id) p.animal_id AS "animalId", p.thumbnail_key AS "thumbnailKey"
+            FROM photos p
+            WHERE p.animal_id IN (:animalIds) AND p.purpose = 'CHARACTER'
+            ORDER BY p.animal_id, p.id DESC
+            """, nativeQuery = true)
     List<AnimalThumbnail> findCharacterThumbnails(@Param("animalIds") Collection<Long> animalIds);
 }
