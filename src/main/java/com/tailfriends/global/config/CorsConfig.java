@@ -22,6 +22,8 @@ public class CorsConfig {
         configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        // 관리자 웹이 리프레시 토큰 쿠키를 주고받는다. 허용 origin은 목록으로만 둔다("*"와 함께 쓸 수 없다)
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
