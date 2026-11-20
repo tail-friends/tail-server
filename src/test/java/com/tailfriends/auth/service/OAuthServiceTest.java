@@ -2,8 +2,11 @@ package com.tailfriends.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.tailfriends.auth.client.OAuthClient;
 import com.tailfriends.auth.client.OAuthUserInfo;
@@ -31,9 +34,21 @@ class OAuthServiceTest {
         given(signInService.signIn(Provider.KAKAO, userInfo)).willReturn(expected);
 
         OAuthLoginResponse response = oauthService.login(
-                new OAuthLoginRequest(Provider.KAKAO, "auth-code", "https://app.example/callback"));
+                new OAuthLoginRequest(Provider.KAKAO, "auth-code", "https://app.example/callback"), false);
 
         assertThat(response).isEqualTo(expected);
+    }
+
+    @Test
+    void 웹_요청이면_웹용으로_사용자_정보를_가져온다() {
+        OAuthUserInfo userInfo = new OAuthUserInfo("001234.abcd", null, null);
+        given(kakao.provider()).willReturn(Provider.KAKAO);
+        given(kakao.fetchUserForWeb("auth-code", "https://admin.example/callback")).willReturn(userInfo);
+
+        oauthService.login(new OAuthLoginRequest(Provider.KAKAO, "auth-code", "https://admin.example/callback"), true);
+
+        verify(signInService).signIn(Provider.KAKAO, userInfo);
+        verify(kakao, never()).fetchUser(any(), any());
     }
 
     @Test
@@ -41,7 +56,7 @@ class OAuthServiceTest {
         given(kakao.provider()).willReturn(Provider.KAKAO);
 
         assertThatThrownBy(() -> oauthService.login(
-                new OAuthLoginRequest(Provider.GOOGLE, "auth-code", "https://app.example/callback")))
+                new OAuthLoginRequest(Provider.GOOGLE, "auth-code", "https://app.example/callback"), false))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);

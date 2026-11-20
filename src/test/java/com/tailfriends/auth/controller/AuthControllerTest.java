@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -53,7 +54,7 @@ class AuthControllerTest {
 
     @Test
     void 인증_없이_소셜_로그인하고_명세_형식으로_응답한다() throws Exception {
-        given(oauthService.login(any())).willReturn(new OAuthLoginResponse("access", "refresh", true,
+        given(oauthService.login(any(), anyBoolean())).willReturn(new OAuthLoginResponse("access", "refresh", true,
                 new OAuthLoginResponse.LoginUser(1L, "망고집사")));
 
         mockMvc.perform(post("/api/v1/auth/oauth/callback")
@@ -82,7 +83,7 @@ class AuthControllerTest {
 
     @Test
     void 인가_코드가_틀리면_401_OAUTH_FAILED() throws Exception {
-        given(oauthService.login(any())).willThrow(new BusinessException(ErrorCode.OAUTH_FAILED));
+        given(oauthService.login(any(), anyBoolean())).willThrow(new BusinessException(ErrorCode.OAUTH_FAILED));
 
         mockMvc.perform(post("/api/v1/auth/oauth/callback")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +153,7 @@ class AuthControllerTest {
 
     @Test
     void 웹_로그인은_리프레시_토큰을_httpOnly_쿠키로_주고_본문에서는_뺀다() throws Exception {
-        given(oauthService.login(any())).willReturn(new OAuthLoginResponse("access", "refresh", false,
+        given(oauthService.login(any(), anyBoolean())).willReturn(new OAuthLoginResponse("access", "refresh", false,
                 new OAuthLoginResponse.LoginUser(1L, "운영자")));
 
         mockMvc.perform(post("/api/v1/auth/oauth/callback")
@@ -170,7 +171,7 @@ class AuthControllerTest {
 
     @Test
     void 앱_로그인은_쿠키를_주지_않는다() throws Exception {
-        given(oauthService.login(any())).willReturn(new OAuthLoginResponse("access", "refresh", false,
+        given(oauthService.login(any(), anyBoolean())).willReturn(new OAuthLoginResponse("access", "refresh", false,
                 new OAuthLoginResponse.LoginUser(1L, "망고집사")));
 
         mockMvc.perform(post("/api/v1/auth/oauth/callback")
