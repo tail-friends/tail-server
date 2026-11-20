@@ -90,6 +90,12 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:30m}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:14d}
 
+# 웹(X-Client-Type: WEB)의 리프레시 토큰 쿠키. 운영은 HTTPS라 Secure를 켠다.
+# 로컬에서 http 주소(localhost 제외)로 관리자 웹을 띄울 때만 false로 둔다.
+auth:
+  refresh-cookie:
+    secure: ${REFRESH_COOKIE_SECURE:true}
+
 # 사진 저장소. 지금은 서버 디스크에 저장하고 public-url/{key}로 내려준다.
 storage:
   local-path: ${STORAGE_LOCAL_PATH:./storage}
