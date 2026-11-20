@@ -3,6 +3,7 @@ package com.tailfriends.auth.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,12 +16,14 @@ import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 class AuthIntegrationTest extends IntegrationTestSupport {
@@ -84,6 +87,31 @@ class AuthIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isNoContent());
 
         assertThat(refreshTokenRepository.findByTokenHash(RefreshToken.hash(others.refreshToken()))).isPresent();
+    }
+
+    @Test
+    void 웹은_쿠키로_재발급하고_쿠키로_로그아웃한다() throws Exception {
+        TokenResponse tokens = tokenService.issue(saveUser());
+
+        MvcResult reissued = mockMvc.perform(put("/api/v1/auth/reissue")
+                        .header("X-Client-Type", "WEB")
+                        .cookie(new Cookie("refresh_token", tokens.refreshToken())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.refreshToken").value((Object) null))
+                .andReturn();
+        Cookie newCookie = reissued.getResponse().getCookie("refresh_token");
+        assertThat(newCookie).isNotNull();
+        assertThat(newCookie.isHttpOnly()).isTrue();
+        String accessToken = JsonPath.read(reissued.getResponse().getContentAsString(), "$.data.accessToken");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .header("X-Client-Type", "WEB")
+                        .cookie(new Cookie("refresh_token", newCookie.getValue())))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("refresh_token", 0));
+
+        assertThat(refreshTokenRepository.findByTokenHash(RefreshToken.hash(newCookie.getValue()))).isEmpty();
     }
 
     private ResultActions reissue(String refreshToken) throws Exception {
