@@ -5,13 +5,13 @@
 
 ## 배포가 하는 일
 
-1. `docker-compose.prod.yml`을 서버의 `/opt/tail-server/docker-compose.yml`로, `monitoring/` 폴더를 `/opt/tail-server/monitoring`으로 올린다.
+1. `docker-compose.prod.yml`을 서버의 `/opt/tail-server/docker-compose.yml`로, `monitoring/`·`caddy/` 폴더를 `/opt/tail-server/` 아래로 올린다.
 2. `deploy-remote.sh`를 서버에서 실행한다: GHCR 로그인 → `docker compose pull app` → `.env`의 `IMAGE_TAG`를 이번 태그로 적음 → `up -d` → `/api/v1/health-check`를 최대 3분 확인.
-3. 성공하면 프로메테우스에 SIGHUP을 보내 바뀐 수집 설정을 다시 읽게 한다.
+3. 성공하면 프로메테우스에 SIGHUP을 보내 바뀐 수집 설정을, caddy는 `caddy reload`로 바뀐 프록시 설정을 다시 읽게 한다.
 4. 실패하면 `/opt/tail-server/current_tag`에 적힌 이전 태그로 되돌리고(`.env`의 `IMAGE_TAG`도 되돌린다), 이번 배포는 실패로 끝낸다.
 5. 결과를 Discord로 알린다. 성공은 알림만, 실패·롤백은 배포한 사람을 태그한다(아래 "배포 알림").
 
-서버에는 DB(PostgreSQL), 앱 컨테이너, 사진 볼륨, 모니터링(프로메테우스·그라파나)이 docker compose로 함께 뜬다. DB·프로메테우스·관리 포트(8081)는 밖으로 열지 않고, 그라파나는 서버의 127.0.0.1:3000에만 연다.
+서버에는 DB(PostgreSQL), 앱 컨테이너, 사진 볼륨, HTTPS 리버스 프록시(caddy), 모니터링(프로메테우스·그라파나)이 docker compose로 함께 뜬다. 밖에서는 caddy의 80·443으로만 들어온다. API(8080)는 서버의 127.0.0.1에만 열고, DB·프로메테우스·관리 포트(8081)는 열지 않으며, 그라파나는 서버의 127.0.0.1:3000에만 연다.
 
 ## 1. 서버 준비
 
@@ -61,8 +61,11 @@ sudo chmod 600 /opt/tail-server/.env
 | `JWT_SECRET` | `openssl rand -base64 64` 로 만든 값 |
 | `KAKAO_*`, `GOOGLE_*`, `APPLE_*` | 소셜 로그인 키. 리다이렉트 URI도 운영 도메인으로 등록 |
 | `OAUTH_TOKEN_ENCRYPTION_KEY` | `openssl rand -base64 32`. **바꾸면 저장된 애플 토큰을 풀 수 없다** |
-| `STORAGE_PUBLIC_URL` | 운영 도메인 기준 `/files` 주소 |
-| `CORS_ALLOWED_ORIGINS` | 운영 앱·웹 origin |
+| `API_DOMAIN` | API 도메인 (예: `api.<도메인>`). **없으면 `docker compose`가 실패해 배포가 되지 않는다** |
+| `ADMIN_DOMAIN` | 관리자 웹 도메인 (예: `admin.<도메인>`). **없으면 배포가 되지 않는다** |
+| `ADMIN_UPSTREAM` | caddy가 관리자 웹으로 넘길 주소. 기본 `host.docker.internal:3001` (1-6 참고) |
+| `STORAGE_PUBLIC_URL` | `https://<API_DOMAIN>/files` |
+| `CORS_ALLOWED_ORIGINS` | `https://<ADMIN_DOMAIN>` (웹 리프레시 토큰 쿠키를 쓰므로 `*`는 안 된다) |
 | `AI_API_KEY` | Gemini API 키 |
 | `FCM_CREDENTIALS` | Firebase 서비스 계정 키 JSON을 Base64로 한 줄. 비우면 푸시를 보내지 않는다 |
 | `GRAFANA_ADMIN_PASSWORD` | 그라파나 admin 비밀번호. 강한 값. **없으면 `docker compose`가 실패해 배포가 되지 않는다** |
@@ -72,10 +75,26 @@ sudo chmod 600 /opt/tail-server/.env
 
 ### 1-5. 방화벽
 
-- SSH 포트와 앱이 쓰는 포트(8080, 또는 앞단 프록시를 쓰면 80/443)만 연다.
+- SSH 포트와 80·443(TCP, 443은 HTTP/3용 UDP도)만 연다. 80은 인증서 발급(HTTP-01)과 https로 넘기는 데 쓴다.
+- 8080은 열지 않는다. compose가 127.0.0.1에만 게시한다.
+- 3001(관리자 웹)도 열지 않는다. 다만 도커가 게시한 포트는 ufw 규칙을 우회하므로, 관리자 웹 쪽 compose에서 게시를 막아야 한다(1-6).
 - 5432(DB)는 열지 않는다. compose가 이미 포트를 게시하지 않는다.
 - 8081(관리 포트), 9090(프로메테우스), 3000(그라파나)도 열지 않는다. compose가 앞의 둘은 게시하지 않고, 그라파나는 127.0.0.1에만 게시한다.
-- HTTPS는 이 배포에 포함돼 있지 않다. 도메인과 리버스 프록시(Nginx, Caddy 등)를 앞에 두고 8080으로 넘기는 구성을 따로 준비한다.
+
+### 1-6. 도메인과 HTTPS
+
+caddy가 `API_DOMAIN`은 앱(`app:8080`)으로, `ADMIN_DOMAIN`은 관리자 웹(`ADMIN_UPSTREAM`)으로 넘기고, 인증서는 Let's Encrypt로 자동 발급·갱신한다. 설정은 `caddy/Caddyfile`.
+
+1. DNS에 `API_DOMAIN`, `ADMIN_DOMAIN`의 A 레코드를 서버 IP로 만든다. 전파된 뒤 배포해야 인증서가 발급된다.
+2. 방화벽에서 80·443을 연다(1-5).
+3. `.env`에 `API_DOMAIN`, `ADMIN_DOMAIN`과 위 표의 `STORAGE_PUBLIC_URL`, `CORS_ALLOWED_ORIGINS`를 넣고 배포한다.
+4. 확인: `curl -i https://<API_DOMAIN>/api/v1/health-check`
+5. 관리자 웹: 지금처럼 서버의 3001에 떠 있으면 기본값(`host.docker.internal:3001`)으로 넘어간다. 3001이 밖에 열리지 않게 하려면 관리자 웹 컨테이너를 이 compose의 네트워크(`tail-server_default`)에 붙이고 포트 게시를 지운 뒤 `ADMIN_UPSTREAM=<관리자 웹 컨테이너 이름>:<포트>`로 바꾼다.
+
+- API 도메인과 관리자 웹 도메인은 같은 상위 도메인 아래에 둔다(`api.<도메인>`, `admin.<도메인>`). 웹 리프레시 토큰 쿠키가 `SameSite=Lax`라 서로 다른 사이트면 쿠키가 전송되지 않는다.
+- 소셜 로그인 리다이렉트 URI(카카오·구글), 애플 Services ID의 도메인·Return URL을 https 주소로 등록한다.
+- 앱의 API 주소를 `https://<API_DOMAIN>`으로 바꾼다. 바꾸기 전 앱 버전은 `http://<IP>:8080`을 쓰므로 이 배포 뒤로는 연결되지 않는다. 앱 배포 일정과 맞춘다.
+- `caddy-data` 볼륨에 인증서가 있다. 지우면 다시 발급받는데, Let's Encrypt는 같은 도메인 발급 횟수를 제한한다.
 
 ## 2. SSH 키
 
