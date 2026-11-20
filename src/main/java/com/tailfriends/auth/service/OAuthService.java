@@ -20,12 +20,17 @@ public class OAuthService {
     private final List<OAuthClient> oauthClients;
     private final SignInService signInService;
 
-    public OAuthLoginResponse login(OAuthLoginRequest request) {
+    /**
+     * @param web 관리자 웹에서 받은 인가 코드면 true. 애플은 웹이면 Services ID로 교환한다
+     */
+    public OAuthLoginResponse login(OAuthLoginRequest request, boolean web) {
         OAuthClient client = oauthClients.stream()
                 .filter(candidate -> candidate.provider() == request.provider())
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT, "아직 지원하지 않는 로그인 방식이에요"));
-        OAuthUserInfo userInfo = client.fetchUser(request.code(), request.redirectUri());
+        OAuthUserInfo userInfo = web
+                ? client.fetchUserForWeb(request.code(), request.redirectUri())
+                : client.fetchUser(request.code(), request.redirectUri());
         return signInService.signIn(request.provider(), userInfo);
     }
 }

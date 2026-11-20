@@ -29,8 +29,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * iOS 앱의 애플 로그인. 앱이 받은 인가 코드를 애플 토큰 API로 바꾸고, 함께 온 ID 토큰에서 사용자를 읽는다.
- * 애플은 이름을 ID 토큰에 주지 않아 nickname은 항상 null이다. 탈퇴할 때 철회하도록 refresh token도 돌려준다.
+ * 애플 로그인. 받은 인가 코드를 애플 토큰 API로 바꾸고, 함께 온 ID 토큰에서 사용자를 읽는다.
+ * 애플은 이름을 ID 토큰에 주지 않아 nickname은 항상 null이다.
+ * iOS 앱은 번들 ID로, 관리자 웹은 Services ID로 교환한다. 두 ID가 같은 App ID 그룹이면 애플 사용자 ID(sub)가 같다.
  */
 @Slf4j
 @Component
@@ -54,16 +55,42 @@ public class AppleOAuthClient implements OAuthClient {
 
     /**
      * iOS 앱에서 받은 인가 코드는 redirect_uri 없이 교환하므로 redirectUri는 쓰지 않는다.
+     * 탈퇴할 때 철회하도록 refresh token도 돌려준다.
      */
     @Override
     public OAuthUserInfo fetchUser(String code, String redirectUri) {
         OAuthProperties.Apple apple = requireApple();
+        return exchange(apple, apple.clientId(), code, null);
+    }
 
+    /**
+     * 관리자 웹이 애플 JS SDK로 받은 인가 코드. Services ID와 인가 요청 때의 redirect_uri로 교환한다.
+     * 탈퇴 철회는 앱 키로 하므로 웹에서 받은 refresh token은 돌려주지 않는다(저장된 앱 토큰을 덮어쓰지 않게).
+     *
+     * @throws BusinessException Services ID(APPLE_WEB_CLIENT_ID)가 설정되지 않았으면 INVALID_INPUT
+     */
+    @Override
+    public OAuthUserInfo fetchUserForWeb(String code, String redirectUri) {
+        OAuthProperties.Apple apple = requireApple();
+        if (!StringUtils.hasText(apple.webClientId())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "웹에서는 아직 애플로 로그인할 수 없어요");
+        }
+        OAuthUserInfo user = exchange(apple, apple.webClientId(), code, redirectUri);
+        return new OAuthUserInfo(user.providerId(), user.nickname(), user.email());
+    }
+
+    /**
+     * @param redirectUri 웹이면 인가 요청 때의 값, 앱이면 null(보내지 않음)
+     */
+    private OAuthUserInfo exchange(OAuthProperties.Apple apple, String clientId, String code, String redirectUri) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
-        form.add("client_id", apple.clientId());
-        form.add("client_secret", clientSecret(apple));
+        form.add("client_id", clientId);
+        form.add("client_secret", clientSecret(apple, clientId));
         form.add("code", code);
+        if (redirectUri != null) {
+            form.add("redirect_uri", redirectUri);
+        }
 
         try {
             TokenResponse token = oauthRestClient.post()
@@ -76,7 +103,7 @@ public class AppleOAuthClient implements OAuthClient {
                 throw new BusinessException(ErrorCode.OAUTH_FAILED);
             }
             IdTokenClaims claims = readClaims(token.idToken());
-            validate(claims, apple.clientId());
+            validate(claims, clientId);
             return new OAuthUserInfo(claims.sub(), null, claims.email(), token.refreshToken());
         } catch (HttpClientErrorException e) {
             // 인가 코드 만료·재사용, client secret 서명 오류 등은 4xx(invalid_grant, invalid_client)로 온다
@@ -124,11 +151,18 @@ public class AppleOAuthClient implements OAuthClient {
      * 애플이 요구하는 client secret. 팀 ID가 발급하고 앱 번들 ID가 주체인 ES256 JWT다.
      */
     String clientSecret(OAuthProperties.Apple apple) {
+        return clientSecret(apple, apple.clientId());
+    }
+
+    /**
+     * @param clientId 주체. 앱이면 번들 ID, 웹이면 Services ID
+     */
+    String clientSecret(OAuthProperties.Apple apple, String clientId) {
         Instant now = clock.instant();
         return Jwts.builder()
                 .header().keyId(apple.keyId()).and()
                 .issuer(apple.teamId())
-                .subject(apple.clientId())
+                .subject(clientId)
                 .audience().add(ISSUER).and()
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(CLIENT_SECRET_TTL)))
