@@ -13,4 +13,13 @@ public interface OAuthClient {
      * @throws com.tailfriends.global.exception.BusinessException 인가 코드가 틀리거나 만료되면 OAUTH_FAILED
      */
     OAuthUserInfo fetchUser(String code, String redirectUri);
+
+    /**
+     * 웹(관리자 웹)에서 받은 인가 코드. 앱과 같은 앱 키를 쓰는 소셜은 fetchUser와 같다.
+     *
+     * @throws com.tailfriends.global.exception.BusinessException 인가 코드가 틀리거나 만료되면 OAUTH_FAILED
+     */
+    default OAuthUserInfo fetchUserForWeb(String code, String redirectUri) {
+        return fetchUser(code, redirectUri);
+    }
 }

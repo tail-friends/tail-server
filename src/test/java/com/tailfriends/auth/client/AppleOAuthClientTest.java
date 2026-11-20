@@ -34,10 +34,11 @@ class AppleOAuthClientTest {
 
     private static final Instant NOW = Instant.parse("2026-10-26T03:00:00Z");
     private static final String BUNDLE_ID = "com.tailfriends.app";
+    private static final String SERVICES_ID = "com.tailfriends.admin";
 
     private final KeyPair keyPair = ecKeyPair();
     private final OAuthProperties.Apple apple = new OAuthProperties.Apple(BUNDLE_ID, "TEAM123456", "KEY1234567",
-            Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded()));
+            Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded()), SERVICES_ID);
     private final RestClient.Builder builder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     private final AppleOAuthClient client = new AppleOAuthClient(builder.build(),
@@ -152,6 +153,47 @@ class AppleOAuthClientTest {
         respondWith("not-a-jwt");
 
         assertOAuthFailed();
+    }
+
+    @Test
+    void 웹은_Services_ID와_redirect_uri로_교환하고_refresh_token은_돌려주지_않는다() {
+        server.expect(requestTo(AppleOAuthClient.TOKEN_URL))
+                .andExpect(content().formDataContains(Map.of(
+                        "client_id", SERVICES_ID,
+                        "redirect_uri", "https://admin.example/callback",
+                        "code", "web-code")))
+                .andRespond(withSuccess(
+                        tokenResponse(idToken(AppleOAuthClient.ISSUER, SERVICES_ID, NOW.plusSeconds(600))),
+                        MediaType.APPLICATION_JSON));
+
+        OAuthUserInfo user = client.fetchUserForWeb("web-code", "https://admin.example/callback");
+
+        assertThat(user).isEqualTo(new OAuthUserInfo("001234.abcd.0123", null, "abc@privaterelay.appleid.com"));
+        server.verify();
+    }
+
+    @Test
+    void 웹_ID_토큰의_대상이_Services_ID가_아니면_OAUTH_FAILED() {
+        respondWith(idToken(AppleOAuthClient.ISSUER, BUNDLE_ID, NOW.plusSeconds(600)));
+
+        assertThatThrownBy(() -> client.fetchUserForWeb("web-code", "https://admin.example/callback"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.OAUTH_FAILED);
+    }
+
+    @Test
+    void Services_ID가_없으면_웹_로그인은_INVALID_INPUT() {
+        AppleOAuthClient appOnly = new AppleOAuthClient(builder.build(),
+                new OAuthProperties(null, null, new OAuthProperties.Apple(BUNDLE_ID, "TEAM123456", "KEY1234567",
+                        apple.privateKey())),
+                Clock.fixed(NOW, ZoneOffset.UTC), new ObjectMapper());
+
+        assertThatThrownBy(() -> appOnly.fetchUserForWeb("web-code", "https://admin.example/callback"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+        server.verify();
     }
 
     @Test
