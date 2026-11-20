@@ -26,7 +26,7 @@ public class AdminSpeciesService {
      */
     @Transactional(readOnly = true)
     public AdminSpeciesListResponse getSpeciesList() {
-        return new AdminSpeciesListResponse(speciesRepository.findAllByOrderByDisplayOrderAscNameAsc().stream()
+        return new AdminSpeciesListResponse(speciesRepository.findAllWithGuideEditor().stream()
                 .map(AdminSpeciesResponse::from)
                 .toList());
     }
