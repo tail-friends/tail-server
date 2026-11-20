@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,9 +15,11 @@ import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.AdminTokens;
 import com.tailfriends.global.support.IntegrationTestSupport;
+import com.tailfriends.global.util.KstDate;
 import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.domain.Role;
 import com.tailfriends.user.repository.UserRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -125,6 +128,36 @@ class AdminSpeciesIntegrationTest extends IntegrationTestSupport {
                         .content(createBody("레오파드 게코")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void 가이드를_저장하면_종_목록과_편집용_조회에_마지막_수정_날짜와_운영자가_나온다() throws Exception {
+        String admin = adminToken();
+        Integer id = createSpecies(admin, "토케이 게코 " + System.nanoTime());
+        String today = LocalDate.now(KstDate.ZONE).toString();
+
+        mockMvc.perform(get("/api/v1/admin/species").header(HttpHeaders.AUTHORIZATION, admin))
+                .andExpect(jsonPath("$.data.species[?(@.id == " + id + ")].guideUpdatedAt").value((Object) null));
+
+        mockMvc.perform(put("/api/v1/admin/species/" + id + "/guide").header(HttpHeaders.AUTHORIZATION, admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"sections\": [ { \"key\": \"FEED\", \"body\": \"귀뚜라미\" } ] }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.updatedAt").value(today))
+                .andExpect(jsonPath("$.data.updatedBy").value("관리자"));
+
+        mockMvc.perform(get("/api/v1/admin/species").header(HttpHeaders.AUTHORIZATION, admin))
+                .andExpect(jsonPath("$.data.species[?(@.id == " + id + ")].guideUpdatedAt").value(today))
+                .andExpect(jsonPath("$.data.species[?(@.id == " + id + ")].guideUpdatedBy").value("관리자"));
+        mockMvc.perform(get("/api/v1/admin/species/" + id + "/guide").header(HttpHeaders.AUTHORIZATION, admin))
+                .andExpect(jsonPath("$.data.sections[0].body").value("귀뚜라미"))
+                .andExpect(jsonPath("$.data.updatedBy").value("관리자"));
+
+        // 종을 지우기 전에 가이드를 비운다 (species_guides가 종을 참조한다)
+        mockMvc.perform(put("/api/v1/admin/species/" + id + "/guide").header(HttpHeaders.AUTHORIZATION, admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"sections\": [] }"))
+                .andExpect(status().isOk());
     }
 
     @Test
