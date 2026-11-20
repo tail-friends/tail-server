@@ -24,7 +24,8 @@ public class AdminStatsController {
 
     @Operation(summary = "운영 통계",
             description = "전체 가입자·개체 수와 최근 days일(오늘 포함, KST)의 날짜별 새 가입자·새 개체 수, AI 분석 수·실패 수. "
-                    + "days는 1~90, 기본 7.")
+                    + "days는 1~90, 기본 7. speciesCounts는 전체 기간의 종별 등록 개체 수(많은 순)로, 숨긴 종도 포함하고 "
+                    + "직접 입력한 종은 speciesId null, 이름 \"직접 입력\" 하나로 묶는다.")
     @GetMapping("/api/v1/admin/stats")
     public ApiResponse<AdminStatsResponse> getStats(
             @RequestParam(defaultValue = "7") @Min(1) @Max(90) int days) {
