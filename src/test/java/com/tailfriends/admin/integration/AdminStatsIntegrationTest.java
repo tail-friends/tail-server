@@ -73,6 +73,25 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 종별_등록_개체_수는_직접_입력한_종을_하나로_묶고_합이_전체_개체_수와_같다() throws Exception {
+        String before = stats();
+
+        User user = saveUser();
+        String token = "Bearer " + jwtProvider.createAccessToken(user.getId(), user.getRole());
+        createAnimal(token, "{ \"name\": \"망고\", \"speciesId\": 1, \"feedIntervalDays\": 4 }");
+        createAnimal(token, "{ \"name\": \"콩이\", \"speciesName\": \"사바나 모니터\", \"feedIntervalDays\": 3 }");
+        createAnimal(token, "{ \"name\": \"밤이\", \"speciesName\": \"그린 이구아나\", \"feedIntervalDays\": 2 }");
+
+        String after = stats();
+        assertThat(speciesCount(after, "1") - speciesCount(before, "1")).isEqualTo(1);
+        assertThat(speciesCount(after, null) - speciesCount(before, null)).isEqualTo(2);
+        List<String> customNames = JsonPath.read(after, "$.data.speciesCounts[?(@.speciesId == null)].name");
+        assertThat(customNames).containsExactly("직접 입력");
+        List<Number> counts = JsonPath.read(after, "$.data.speciesCounts[*].count");
+        assertThat(counts.stream().mapToLong(Number::longValue).sum()).isEqualTo(number(after, "$.data.totalAnimals"));
+    }
+
+    @Test
     void AI_분석을_하면_오늘_분석_수와_실패_수가_는다() throws Exception {
         String before = stats();
 
@@ -90,6 +109,21 @@ class AdminStatsIntegrationTest extends IntegrationTestSupport {
         return mockMvc.perform(get("/api/v1/admin/stats").header(HttpHeaders.AUTHORIZATION, admin))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
+    }
+
+    private void createAnimal(String token, String content) throws Exception {
+        mockMvc.perform(post("/api/v1/animals").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content(content))
+                .andExpect(status().isCreated());
+    }
+
+    /**
+     * speciesId가 null이면 직접 입력한 종 묶음. 항목이 없으면 0.
+     */
+    private static long speciesCount(String json, String speciesId) {
+        String filter = speciesId == null ? "@.speciesId == null" : "@.speciesId == " + speciesId;
+        List<Number> counts = JsonPath.read(json, "$.data.speciesCounts[?(" + filter + ")].count");
+        return counts.isEmpty() ? 0 : counts.getFirst().longValue();
     }
 
     private static long number(String json, String path) {
