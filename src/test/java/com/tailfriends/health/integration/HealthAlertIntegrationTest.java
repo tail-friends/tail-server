@@ -11,6 +11,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.IntegrationTestSupport;
 import com.tailfriends.global.util.KstDate;
+import com.tailfriends.species.repository.SpeciesRepository;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
@@ -36,6 +37,9 @@ class HealthAlertIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private SpeciesRepository speciesRepository;
+
     @Test
     void 안_먹음이_3번_연속이면_거식_경고가_생기고_한_번만_만든다() throws Exception {
         String token = tokenOfNewUser();
@@ -55,6 +59,20 @@ class HealthAlertIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.data.alerts", hasSize(1)));
         mockMvc.perform(get("/api/v1/animals").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(jsonPath("$.data.animals[0].alertCount").value(1));
+    }
+
+    @Test
+    void 볼_파이톤은_안_먹음이_8번_연속이어야_거식_경고가_생긴다() throws Exception {
+        String token = tokenOfNewUser();
+        Long ballPythonId = speciesRepository.findByName("볼 파이톤").orElseThrow().getId();
+        Integer animalId = createAnimal(token, ballPythonId);
+        for (int daysAgo = 70; daysAgo > 0; daysAgo -= 10) {
+            refuse(token, animalId, TODAY.minusDays(daysAgo)).andExpect(jsonPath("$.data.newAlerts", hasSize(0)));
+        }
+
+        refuse(token, animalId, TODAY)
+                .andExpect(jsonPath("$.data.newAlerts", hasSize(1)))
+                .andExpect(jsonPath("$.data.newAlerts[0].message").value("최근 8번 연속으로 먹지 않았어요"));
     }
 
     @Test
@@ -154,9 +172,14 @@ class HealthAlertIntegrationTest extends IntegrationTestSupport {
     }
 
     private Integer createAnimal(String token) throws Exception {
+        return createAnimal(token, 1L);
+    }
+
+    private Integer createAnimal(String token, Long speciesId) throws Exception {
         String body = mockMvc.perform(post("/api/v1/animals").header(HttpHeaders.AUTHORIZATION, token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{ \"name\": \"망고\", \"speciesId\": 1, \"feedIntervalDays\": 4 }"))
+                        .content("{ \"name\": \"망고\", \"speciesId\": %d, \"feedIntervalDays\": 4 }"
+                                .formatted(speciesId)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.data.id");
