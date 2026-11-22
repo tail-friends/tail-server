@@ -86,6 +86,12 @@ public class Species extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "varchar(40)[]")
     private List<String> aliases = new ArrayList<>();
 
+    /**
+     * 이 종의 거식 경고 기준("안 먹음" 연속 횟수). 오래 굶기도 하는 종만 있다.
+     * 사용자 설정보다 작게 적용하지 않는다. 지금은 마이그레이션으로만 채운다.
+     */
+    private Integer refusalCount;
+
     /** 작을수록 종 목록 앞에 나온다. 같으면 이름순. */
     @Column(nullable = false)
     private int displayOrder;

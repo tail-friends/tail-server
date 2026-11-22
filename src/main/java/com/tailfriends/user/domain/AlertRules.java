@@ -16,4 +16,14 @@ public record AlertRules(
 ) {
 
     public static final AlertRules DEFAULT = new AlertRules(3, 10, 30, 2);
+
+    /**
+     * 거식 경고 기준을 minRefusalCount 이상으로 올린다. null이거나 이미 크거나 같으면 그대로다.
+     */
+    public AlertRules withRefusalCountAtLeast(Integer minRefusalCount) {
+        if (minRefusalCount == null || minRefusalCount <= refusalCount) {
+            return this;
+        }
+        return new AlertRules(minRefusalCount, weightLossPercent, weightLossDays, looseStoolCount);
+    }
 }
