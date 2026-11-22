@@ -3,10 +3,12 @@ package com.tailfriends.admin.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tailfriends.admin.dto.AdminSpeciesGuideResponse;
 import com.tailfriends.admin.service.AdminSpeciesGuideService;
 import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
@@ -51,14 +53,40 @@ class AdminSpeciesGuideControllerTest {
     @Test
     @WithMockUserId(role = "ADMIN")
     void 가이드를_저장한다() throws Exception {
-        given(adminSpeciesGuideService.saveGuide(eq(1L), any())).willReturn(new SpeciesGuideResponse(1L, "레오파드 게코",
-                List.of(new SpeciesGuideResponse.Section(GuideSection.FEED, "먹이", "귀뚜라미, 밀웜",
-                        LocalDate.of(2026, 10, 21)))));
+        given(adminSpeciesGuideService.saveGuide(eq(1L), any())).willReturn(guide());
 
         mockMvc.perform(put("/api/v1/admin/species/1/guide").contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sections[0].key").value("FEED"))
-                .andExpect(jsonPath("$.data.sections[0].title").value("먹이"));
+                .andExpect(jsonPath("$.data.sections[0].title").value("먹이"))
+                .andExpect(jsonPath("$.data.updatedAt").value("2026-10-21"))
+                .andExpect(jsonPath("$.data.updatedBy").value("운영자"));
+    }
+
+    @Test
+    @WithMockUserId(role = "ADMIN")
+    void 편집용_가이드를_마지막_수정_날짜와_운영자와_함께_조회한다() throws Exception {
+        given(adminSpeciesGuideService.getGuide(1L)).willReturn(guide());
+
+        mockMvc.perform(get("/api/v1/admin/species/1/guide"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sections[0].body").value("귀뚜라미, 밀웜"))
+                .andExpect(jsonPath("$.data.updatedAt").value("2026-10-21"))
+                .andExpect(jsonPath("$.data.updatedBy").value("운영자"));
+    }
+
+    @Test
+    @WithMockUserId(2L)
+    void 일반_사용자는_편집용_조회도_403() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/species/1/guide"))
+                .andExpect(status().isForbidden());
+    }
+
+    private static AdminSpeciesGuideResponse guide() {
+        return new AdminSpeciesGuideResponse(1L, "레오파드 게코",
+                List.of(new SpeciesGuideResponse.Section(GuideSection.FEED, "먹이", "귀뚜라미, 밀웜",
+                        LocalDate.of(2026, 10, 21))),
+                LocalDate.of(2026, 10, 21), "운영자");
     }
 
     @Test
