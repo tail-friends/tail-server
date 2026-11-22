@@ -3,15 +3,20 @@ package com.tailfriends.species.domain;
 import com.tailfriends.global.domain.BaseTimeEntity;
 import com.tailfriends.global.exception.BusinessException;
 import com.tailfriends.global.exception.ErrorCode;
+import com.tailfriends.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -86,9 +91,23 @@ public class Species extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "varchar(40)[]")
     private List<String> aliases = new ArrayList<>();
 
+    /**
+     * 이 종의 거식 경고 기준("안 먹음" 연속 횟수). 오래 굶기도 하는 종만 있다.
+     * 사용자 설정보다 작게 적용하지 않는다. 지금은 마이그레이션으로만 채운다.
+     */
+    private Integer refusalCount;
+
     /** 작을수록 종 목록 앞에 나온다. 같으면 이름순. */
     @Column(nullable = false)
     private int displayOrder;
+
+    /** 가이드를 마지막으로 바꾼 시각. 작성 전이면 null. */
+    private Instant guideUpdatedAt;
+
+    /** 가이드를 마지막으로 바꾼 운영자. 알 수 없거나(이전 기록) 탈퇴했으면 null. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "guide_updated_by")
+    private User guideUpdatedBy;
 
     /**
      * category를 비우면 REPTILE, displayOrder를 비우면 1000(맨 뒤쪽)이다.
@@ -147,6 +166,14 @@ public class Species extends BaseTimeEntity {
         }
         displayOrder = valueOr(change.displayOrder(), displayOrder);
         validateRanges();
+    }
+
+    /**
+     * 가이드 섹션을 만들거나 바꾸거나 지웠을 때 부른다.
+     */
+    public void markGuideUpdated(User editor, Instant updatedAt) {
+        this.guideUpdatedBy = editor;
+        this.guideUpdatedAt = updatedAt;
     }
 
     /**
