@@ -1,0 +1,13 @@
+# 운영 리버스 프록시. 인증서는 Caddy가 Let's Encrypt로 자동 발급·갱신한다.
+# 도메인은 /opt/tail-server/.env의 API_DOMAIN, ADMIN_DOMAIN. DNS A 레코드가 이 서버를 가리켜야 발급된다.
+# 배포 때 이 파일이 바뀌면 deploy.sh가 caddy reload로 다시 읽는다.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}
+
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy {$ADMIN_UPSTREAM}
+}
