@@ -18,6 +18,19 @@ public interface AdminStatsRepository extends Repository<User, Long> {
     @Query(value = "SELECT count(*) FROM animals", nativeQuery = true)
     long countAnimals();
 
+    /**
+     * 종별 등록 개체 수. 많은 순, 같으면 이름순. 개체가 없는 종은 빠지고, 숨긴 종도 개체가 있으면 들어간다.
+     * 목록에 없어 직접 입력한 종은 하나로 묶어 speciesId null, 이름 "직접 입력"으로 센다.
+     */
+    @Query(value = """
+            SELECT a.species_id AS "speciesId", COALESCE(s.name, '직접 입력') AS "name", count(*) AS "count"
+            FROM animals a
+            LEFT JOIN species s ON s.id = a.species_id
+            GROUP BY a.species_id, s.name
+            ORDER BY "count" DESC, "name"
+            """, nativeQuery = true)
+    List<SpeciesCount> countAnimalsBySpecies();
+
     @Query(value = """
             SELECT to_char(created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD') AS day, count(*) AS count
             FROM users

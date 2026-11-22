@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.tailfriends.admin.dto.AdminStatsResponse;
 import com.tailfriends.admin.dto.AdminStatsResponse.Daily;
+import com.tailfriends.admin.dto.AdminStatsResponse.SpeciesCount;
 import com.tailfriends.admin.service.AdminStatsService;
 import com.tailfriends.global.support.WebMvcTestSupport;
 import com.tailfriends.global.support.WithMockUserId;
@@ -45,7 +46,8 @@ class AdminStatsControllerTest {
     @WithMockUserId(role = "ADMIN")
     void 기본은_최근_7일() throws Exception {
         given(adminStatsService.getStats(7)).willReturn(new AdminStatsResponse(120, 340,
-                List.of(new Daily(LocalDate.of(2026, 10, 20), 1, 2, 10, 1))));
+                List.of(new Daily(LocalDate.of(2026, 10, 20), 1, 2, 10, 1)),
+                List.of(new SpeciesCount(1L, "레오파드 게코", 300), new SpeciesCount(null, "직접 입력", 40))));
 
         mockMvc.perform(get("/api/v1/admin/stats"))
                 .andExpect(status().isOk())
@@ -54,7 +56,11 @@ class AdminStatsControllerTest {
                 .andExpect(jsonPath("$.data.daily[0].date").value("2026-10-20"))
                 .andExpect(jsonPath("$.data.daily[0].newAnimals").value(2))
                 .andExpect(jsonPath("$.data.daily[0].aiAnalyses").value(10))
-                .andExpect(jsonPath("$.data.daily[0].aiFailures").value(1));
+                .andExpect(jsonPath("$.data.daily[0].aiFailures").value(1))
+                .andExpect(jsonPath("$.data.speciesCounts[0].speciesId").value(1))
+                .andExpect(jsonPath("$.data.speciesCounts[0].name").value("레오파드 게코"))
+                .andExpect(jsonPath("$.data.speciesCounts[0].count").value(300))
+                .andExpect(jsonPath("$.data.speciesCounts[1].speciesId").isEmpty());
     }
 
     @Test
