@@ -2,6 +2,7 @@ package com.tailfriends.admin.service;
 
 import com.tailfriends.admin.dto.AdminStatsResponse;
 import com.tailfriends.admin.dto.AdminStatsResponse.Daily;
+import com.tailfriends.admin.dto.AdminStatsResponse.SpeciesCount;
 import com.tailfriends.admin.repository.AdminStatsRepository;
 import com.tailfriends.admin.repository.DailyCount;
 import com.tailfriends.global.util.KstDate;
@@ -44,7 +45,12 @@ public class AdminStatsService {
                         aiFailures.getOrDefault(date, 0L)))
                 .toList();
 
-        return new AdminStatsResponse(statsRepository.countUsers(), statsRepository.countAnimals(), daily);
+        List<SpeciesCount> speciesCounts = statsRepository.countAnimalsBySpecies().stream()
+                .map(count -> new SpeciesCount(count.getSpeciesId(), count.getName(), count.getCount()))
+                .toList();
+
+        return new AdminStatsResponse(
+                statsRepository.countUsers(), statsRepository.countAnimals(), daily, speciesCounts);
     }
 
     private static Map<LocalDate, Long> byDate(List<DailyCount> counts) {

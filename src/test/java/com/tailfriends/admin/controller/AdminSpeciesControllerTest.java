@@ -56,7 +56,7 @@ class AdminSpeciesControllerTest {
     @WithMockUserId(role = "ADMIN")
     void 관리자는_소문자_값으로도_종을_추가할_수_있다() throws Exception {
         given(adminSpeciesService.create(any())).willReturn(new AdminSpeciesResponse(11L, "토케이 게코", "gecko",
-                false, 5, null, null, "forest", false, "reptile", null, null, List.of(), 1000));
+                false, 5, null, null, "forest", false, "reptile", null, null, List.of(), 1000, null, null));
 
         mockMvc.perform(post("/api/v1/admin/species").contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
                 .andExpect(status().isCreated())

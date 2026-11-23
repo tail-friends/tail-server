@@ -8,6 +8,7 @@ import com.tailfriends.admin.dto.AdminStatsResponse;
 import com.tailfriends.admin.dto.AdminStatsResponse.Daily;
 import com.tailfriends.admin.repository.AdminStatsRepository;
 import com.tailfriends.admin.repository.DailyCount;
+import com.tailfriends.admin.repository.SpeciesCount;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,6 +52,37 @@ class AdminStatsServiceTest {
 
         assertThat(response.daily()).extracting(Daily::aiAnalyses).containsExactly(0L, 10L, 2L);
         assertThat(response.daily()).extracting(Daily::aiFailures).containsExactly(0L, 1L, 0L);
+    }
+
+    @Test
+    void 종별_등록_개체_수를_조회한_순서대로_담는다() {
+        given(statsRepository.countAnimalsBySpecies())
+                .willReturn(List.of(speciesCount(1L, "레오파드 게코", 30), speciesCount(null, "직접 입력", 2)));
+
+        AdminStatsResponse response = service.getStats(1);
+
+        assertThat(response.speciesCounts()).containsExactly(
+                new AdminStatsResponse.SpeciesCount(1L, "레오파드 게코", 30),
+                new AdminStatsResponse.SpeciesCount(null, "직접 입력", 2));
+    }
+
+    private static SpeciesCount speciesCount(Long speciesId, String name, long count) {
+        return new SpeciesCount() {
+            @Override
+            public Long getSpeciesId() {
+                return speciesId;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public Long getCount() {
+                return count;
+            }
+        };
     }
 
     private static DailyCount count(String day, long count) {

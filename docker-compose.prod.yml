@@ -28,13 +28,37 @@ services:
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tailfriends}
       STORAGE_LOCAL_PATH: /app/storage
+    # 밖에서는 caddy(443)로만 들어온다. 8080은 서버 안(배포 헬스 체크)에서만 연다
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - photo-data:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
+
+  # HTTPS 리버스 프록시. API_DOMAIN → app, ADMIN_DOMAIN → 관리자 웹(ADMIN_UPSTREAM)
+  # 관리자 웹은 지금 서버의 3001 포트에 떠 있어 host.docker.internal:3001로 넘긴다 (docs/deploy.md 1-6)
+  caddy:
+    image: caddy:2.10.0
+    container_name: tailfriends-caddy
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?ADMIN_DOMAIN is required}
+      ADMIN_UPSTREAM: ${ADMIN_UPSTREAM:-host.docker.internal:3001}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
 
   # 모니터링. 서버의 관리 포트(8081)는 게시하지 않고 같은 네트워크에서 app:8081을 수집한다.
   # 프로메테우스는 밖으로 열지 않는다.
@@ -75,3 +99,6 @@ volumes:
   photo-data:
   prometheus-data:
   grafana-data:
+  # 발급받은 인증서. 지우면 다시 발급받는다 (Let's Encrypt 발급 횟수 제한 주의)
+  caddy-data:
+  caddy-config:

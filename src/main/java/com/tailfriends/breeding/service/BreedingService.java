@@ -121,7 +121,6 @@ public class BreedingService {
     /**
      * 태어난 새끼를 개체로 한 번에 등록하고 상태를 HATCHED로 바꾼다. 종·급여 주기는 어미 개체를 따르고,
      * 어미가 외부 개체(또는 지운 개체)면 아빠 개체를 따른다. 여러 번 나눠 등록할 수 있다.
-     * 무료 개체 수 제한(ANIMAL_LIMIT_EXCEEDED)은 개체 등록과 같이 범위가 정해지면 검사한다.
      *
      * @throws BusinessException 부모가 모두 내 개체가 아니거나 해칭일이 메이팅일 전·오늘 이후면 INVALID_INPUT,
      *                           없거나 남의 번식 기록이면 BREEDING_NOT_FOUND

@@ -148,12 +148,15 @@ public class HealthAlertService {
     }
 
     /**
-     * 쿨링 기간에는 거식 경고를 만들지 않는다.
+     * 쿨링 기간에는 거식 경고를 만들지 않는다. 오래 굶기도 하는 종(볼 파이톤 등)은 종의 기준이
+     * 사용자 설정보다 크면 종의 기준으로 판정한다.
      */
-    private Optional<HealthAlert> judgeRefusal(Animal animal, AlertRules rules) {
+    private Optional<HealthAlert> judgeRefusal(Animal animal, AlertRules userRules) {
         if (FeedSchedule.isCooling(animal.getCoolingStart(), animal.getCoolingEnd(), KstDate.today(clock))) {
             return Optional.empty();
         }
+        Species species = animal.getSpecies();
+        AlertRules rules = species == null ? userRules : userRules.withRefusalCountAtLeast(species.getRefusalCount());
         List<Boolean> latestRefused = logRepository.findLatestRefused(
                 animal.getId(), PageRequest.of(0, rules.refusalCount()));
         if (!HealthRules.isRefusalStreak(rules, latestRefused)) {
