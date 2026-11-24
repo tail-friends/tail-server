@@ -45,13 +45,16 @@ public class AuthController {
 
     @Operation(summary = "소셜 로그인",
             description = "앱이 받은 인가 코드로 가입 또는 로그인하고 토큰을 발급한다. 처음 로그인하면 isNewUser: true. "
-                    + "APPLE은 iOS 앱에서 받은 인가 코드만 받으며 redirectUri는 쓰지 않는다. 애플은 이름을 주지 않아 기본 닉네임으로 가입된다."
+                    + "APPLE은 앱이면 iOS 앱에서 받은 인가 코드로 redirectUri를 쓰지 않고, 웹(X-Client-Type: WEB)이면 "
+                    + "애플 JS SDK로 받은 인가 코드와 그때의 redirectUri를 Services ID로 교환한다. "
+                    + "애플은 이름을 주지 않아 기본 닉네임으로 가입된다."
                     + WEB_DESCRIPTION)
     @PostMapping("/oauth/callback")
     public ApiResponse<OAuthLoginResponse> login(@Valid @RequestBody OAuthLoginRequest request,
                                                  HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        OAuthLoginResponse response = oauthService.login(request);
-        if (!refreshTokenCookies.isWeb(httpRequest)) {
+        boolean web = refreshTokenCookies.isWeb(httpRequest);
+        OAuthLoginResponse response = oauthService.login(request, web);
+        if (!web) {
             return ApiResponse.success(response);
         }
         refreshTokenCookies.write(httpResponse, response.refreshToken());
