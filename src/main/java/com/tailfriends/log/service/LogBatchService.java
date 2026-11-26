@@ -79,9 +79,9 @@ public class LogBatchService {
         logs.stream()
                 .filter(log -> Boolean.TRUE.equals(log.getDusted()))
                 .forEach(log -> scheduleService.completeDusting(userId, log.getAnimal().getId(), log.getLogDate()));
-        logs.forEach(pointService::earnForLog);
-        logs.forEach(inventoryService::deductForFeed);
-        animals.values().forEach(animal -> healthAlertService.evaluate(animal, request.type()));
+        pointService.earnForLogs(logs);
+        inventoryService.deductForFeeds(logs);
+        healthAlertService.evaluateAll(animals.values(), request.type());
         return new LogBatchResponse(batchId, logs.stream().map(Log::getId).toList(), undoUntil(logs));
     }
 
