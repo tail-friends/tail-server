@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -79,8 +81,10 @@ class LogBatchServiceTest {
 
         assertThat(response.logIds()).containsExactly(901L, 902L);
         assertThat(response.undoUntil()).isEqualTo(NOW.plusSeconds(5));
-        verify(healthAlertService).evaluate(choco, LogType.FEED);
-        verify(healthAlertService).evaluate(mango, LogType.FEED);
+        verify(healthAlertService).evaluateAll(argThat(animals -> List.copyOf(animals).equals(List.of(choco, mango))),
+                eq(LogType.FEED));
+        verify(pointService).earnForLogs(anyList());
+        verify(inventoryService).deductForFeeds(anyList());
     }
 
     @Test

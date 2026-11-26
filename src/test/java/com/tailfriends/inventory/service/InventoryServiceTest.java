@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
@@ -28,6 +29,7 @@ import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -114,6 +116,20 @@ class InventoryServiceTest {
                 new LogDetails(null, null, null, null, null, null, null, true, null, null, null, null)));
 
         verify(inventoryItemRepository, never()).deduct(anyLong(), anyString(), any(), anyInt());
+    }
+
+    @Test
+    void 일괄_차감은_같은_먹이의_개수를_합쳐_한_번만_뺀다() {
+        service.deductForFeeds(List.of(
+                feed("귀뚜라미", 6, false),
+                feed(" 귀뚜라미 ", 4, false),
+                feed("밀웜", 3, false),
+                feed("귀뚜라미", 5, true),
+                feed("밀웜", null, false)));
+
+        verify(inventoryItemRepository).deduct(USER_ID, "귀뚜라미", InventoryUnit.COUNT, 10);
+        verify(inventoryItemRepository).deduct(USER_ID, "밀웜", InventoryUnit.COUNT, 3);
+        verify(inventoryItemRepository, times(2)).deduct(anyLong(), anyString(), any(), anyInt());
     }
 
     private static Log feed(String food, Integer count, boolean refused) {

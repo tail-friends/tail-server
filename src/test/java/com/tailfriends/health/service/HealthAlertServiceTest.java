@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
@@ -265,6 +266,20 @@ class HealthAlertServiceTest {
                 .humidityMax(40)
                 .defaultHome(Home.DESERT)
                 .build();
+    }
+
+    @Test
+    void 여러_개체를_한_번에_판정하면_경고_기준_설정은_한_번만_읽는다() {
+        Animal mango = animal();
+        Animal choco = withId(animal(), 15L);
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), any())).willReturn(List.of(true, true, true));
+        given(logRepository.findLatestRefused(eq(15L), any())).willReturn(List.of(false, true, true));
+        given(alertRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 77L));
+
+        service.evaluateAll(List.of(mango, choco), LogType.FEED);
+
+        verify(userSettingsService, times(1)).alertRulesOf(USER_ID);
+        verify(alertRepository, times(1)).save(any());
     }
 
     private static Animal animalOf(Species species) {

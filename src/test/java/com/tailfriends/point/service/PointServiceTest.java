@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
@@ -105,6 +106,30 @@ class PointServiceTest {
 
         assertThat(response.history()).extracting("id").containsExactly(501L);
         assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    void 일괄_적립은_적립한_내역의_합계만큼_잔액에_한_번만_더한다() {
+        given(pointHistoryRepository.insertEarning(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), any()))
+                .willReturn(1, 0, 1);
+
+        pointService.earnForLogs(List.of(log(LogType.FEED, KST_TODAY), log(LogType.FEED, KST_TODAY),
+                log(LogType.WEIGHT, KST_TODAY), log(LogType.NOTE, KST_TODAY)));
+
+        verify(pointHistoryRepository, times(3))
+                .insertEarning(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), any());
+        verify(userRepository).addPoints(USER_ID, 20);
+        verify(userRepository, times(1)).addPoints(anyLong(), anyInt());
+    }
+
+    @Test
+    void 일괄_적립에서_적립한_내역이_없으면_잔액을_바꾸지_않는다() {
+        given(pointHistoryRepository.insertEarning(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), any()))
+                .willReturn(0);
+
+        pointService.earnForLogs(List.of(log(LogType.FEED, KST_TODAY), log(LogType.CLEAN, KST_TODAY)));
+
+        verify(userRepository, never()).addPoints(anyLong(), anyInt());
     }
 
     private static Log log(LogType type, LocalDate date) {

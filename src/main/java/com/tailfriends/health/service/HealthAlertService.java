@@ -25,12 +25,15 @@ import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.service.UserSettingsService;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -55,10 +58,24 @@ public class HealthAlertService {
      */
     @Transactional
     public List<AlertResponse> evaluate(Animal animal, LogType logType) {
+        return evaluate(animal, logType, () -> rulesOf(animal));
+    }
+
+    /**
+     * 일괄 기록용. 개체마다 {@link #evaluate(Animal, LogType)}와 같이 판정하고, 경고 기준 설정은 주인마다 한 번만 읽는다.
+     */
+    @Transactional
+    public void evaluateAll(Collection<Animal> animals, LogType logType) {
+        Map<Long, AlertRules> rulesByUser = new HashMap<>();
+        animals.forEach(animal -> evaluate(animal, logType,
+                () -> rulesByUser.computeIfAbsent(animal.getUser().getId(), userSettingsService::alertRulesOf)));
+    }
+
+    private List<AlertResponse> evaluate(Animal animal, LogType logType, Supplier<AlertRules> rules) {
         Optional<HealthAlert> alert = switch (logType) {
-            case FEED -> judgeRefusal(animal, rulesOf(animal));
-            case WEIGHT -> judgeWeightLoss(animal, rulesOf(animal));
-            case CLEAN -> judgeLooseStool(animal, rulesOf(animal));
+            case FEED -> judgeRefusal(animal, rules.get());
+            case WEIGHT -> judgeWeightLoss(animal, rules.get());
+            case CLEAN -> judgeLooseStool(animal, rules.get());
             case ENV -> judgeEnv(animal);
             default -> Optional.empty();
         };
