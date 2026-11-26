@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.tailfriends.animal.domain.Animal;
@@ -83,6 +84,41 @@ class HealthAlertServiceTest {
         List<AlertResponse> alerts = service.evaluate(animal(), LogType.FEED);
 
         assertThat(alerts).extracting(AlertResponse::message).containsExactly("최근 2번 연속으로 먹지 않았어요");
+    }
+
+    @Test
+    void 오래_굶기도_하는_종은_종의_거식_기준으로_판정한다() {
+        Species ballPython = species();
+        ReflectionTestUtils.setField(ballPython, "refusalCount", 8);
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), eq(PageRequest.of(0, 8))))
+                .willReturn(List.of(true, true, true));
+
+        assertThat(service.evaluate(animalOf(ballPython), LogType.FEED)).isEmpty();
+        verify(alertRepository, never()).save(any());
+    }
+
+    @Test
+    void 종의_거식_기준에_닿으면_그_횟수로_경고한다() {
+        Species ballPython = species();
+        ReflectionTestUtils.setField(ballPython, "refusalCount", 8);
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), eq(PageRequest.of(0, 8))))
+                .willReturn(List.of(true, true, true, true, true, true, true, true));
+        given(alertRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 77L));
+
+        List<AlertResponse> alerts = service.evaluate(animalOf(ballPython), LogType.FEED);
+
+        assertThat(alerts).extracting(AlertResponse::message).containsExactly("최근 8번 연속으로 먹지 않았어요");
+    }
+
+    @Test
+    void 사용자_설정이_종의_거식_기준보다_크면_사용자_설정으로_판정한다() {
+        given(userSettingsService.alertRulesOf(USER_ID)).willReturn(new AlertRules(10, 10, 30, 2));
+        Species ballPython = species();
+        ReflectionTestUtils.setField(ballPython, "refusalCount", 8);
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), eq(PageRequest.of(0, 10))))
+                .willReturn(List.of(true, true, true, true, true, true, true, true));
+
+        assertThat(service.evaluate(animalOf(ballPython), LogType.FEED)).isEmpty();
     }
 
     @Test
@@ -230,6 +266,20 @@ class HealthAlertServiceTest {
                 .humidityMax(40)
                 .defaultHome(Home.DESERT)
                 .build();
+    }
+
+    @Test
+    void 여러_개체를_한_번에_판정하면_경고_기준_설정은_한_번만_읽는다() {
+        Animal mango = animal();
+        Animal choco = withId(animal(), 15L);
+        given(logRepository.findLatestRefused(eq(ANIMAL_ID), any())).willReturn(List.of(true, true, true));
+        given(logRepository.findLatestRefused(eq(15L), any())).willReturn(List.of(false, true, true));
+        given(alertRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 77L));
+
+        service.evaluateAll(List.of(mango, choco), LogType.FEED);
+
+        verify(userSettingsService, times(1)).alertRulesOf(USER_ID);
+        verify(alertRepository, times(1)).save(any());
     }
 
     private static Animal animalOf(Species species) {

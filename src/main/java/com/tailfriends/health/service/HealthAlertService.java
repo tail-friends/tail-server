@@ -25,12 +25,15 @@ import com.tailfriends.user.domain.AlertRules;
 import com.tailfriends.user.service.UserSettingsService;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -55,10 +58,24 @@ public class HealthAlertService {
      */
     @Transactional
     public List<AlertResponse> evaluate(Animal animal, LogType logType) {
+        return evaluate(animal, logType, () -> rulesOf(animal));
+    }
+
+    /**
+     * 일괄 기록용. 개체마다 {@link #evaluate(Animal, LogType)}와 같이 판정하고, 경고 기준 설정은 주인마다 한 번만 읽는다.
+     */
+    @Transactional
+    public void evaluateAll(Collection<Animal> animals, LogType logType) {
+        Map<Long, AlertRules> rulesByUser = new HashMap<>();
+        animals.forEach(animal -> evaluate(animal, logType,
+                () -> rulesByUser.computeIfAbsent(animal.getUser().getId(), userSettingsService::alertRulesOf)));
+    }
+
+    private List<AlertResponse> evaluate(Animal animal, LogType logType, Supplier<AlertRules> rules) {
         Optional<HealthAlert> alert = switch (logType) {
-            case FEED -> judgeRefusal(animal, rulesOf(animal));
-            case WEIGHT -> judgeWeightLoss(animal, rulesOf(animal));
-            case CLEAN -> judgeLooseStool(animal, rulesOf(animal));
+            case FEED -> judgeRefusal(animal, rules.get());
+            case WEIGHT -> judgeWeightLoss(animal, rules.get());
+            case CLEAN -> judgeLooseStool(animal, rules.get());
             case ENV -> judgeEnv(animal);
             default -> Optional.empty();
         };
@@ -148,12 +165,15 @@ public class HealthAlertService {
     }
 
     /**
-     * 쿨링 기간에는 거식 경고를 만들지 않는다.
+     * 쿨링 기간에는 거식 경고를 만들지 않는다. 오래 굶기도 하는 종(볼 파이톤 등)은 종의 기준이
+     * 사용자 설정보다 크면 종의 기준으로 판정한다.
      */
-    private Optional<HealthAlert> judgeRefusal(Animal animal, AlertRules rules) {
+    private Optional<HealthAlert> judgeRefusal(Animal animal, AlertRules userRules) {
         if (FeedSchedule.isCooling(animal.getCoolingStart(), animal.getCoolingEnd(), KstDate.today(clock))) {
             return Optional.empty();
         }
+        Species species = animal.getSpecies();
+        AlertRules rules = species == null ? userRules : userRules.withRefusalCountAtLeast(species.getRefusalCount());
         List<Boolean> latestRefused = logRepository.findLatestRefused(
                 animal.getId(), PageRequest.of(0, rules.refusalCount()));
         if (!HealthRules.isRefusalStreak(rules, latestRefused)) {

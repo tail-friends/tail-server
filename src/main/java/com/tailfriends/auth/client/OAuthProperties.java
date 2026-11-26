@@ -24,13 +24,19 @@ public record OAuthProperties(
      * @param clientId   iOS 앱 번들 ID
      * @param teamId     애플 개발자 팀 ID
      * @param keyId      Sign in with Apple 키 ID
-     * @param privateKey 그 키의 .p8 파일 내용 (PEM 또는 BEGIN/END 줄을 뺀 Base64)
+     * @param privateKey  그 키의 .p8 파일 내용 (PEM 또는 BEGIN/END 줄을 뺀 Base64)
+     * @param webClientId 관리자 웹용 Services ID. 비어 있으면 웹에서는 애플로 로그인할 수 없다
      */
     public record Apple(
             String clientId,
             String teamId,
             String keyId,
-            String privateKey
+            String privateKey,
+            String webClientId
     ) {
+
+        public Apple(String clientId, String teamId, String keyId, String privateKey) {
+            this(clientId, teamId, keyId, privateKey, null);
+        }
     }
 }

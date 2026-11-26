@@ -11,9 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.tailfriends.global.security.JwtProvider;
 import com.tailfriends.global.support.IntegrationTestSupport;
+import com.tailfriends.global.util.KstDate;
 import com.tailfriends.user.domain.Provider;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -156,6 +158,47 @@ class LogBatchIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_CLIENT_ID"))
                 .andExpect(jsonPath("$.data.id").value(logId));
+    }
+
+    @Test
+    void 같은_먹이는_합쳐서_재고에서_빼고_포인트는_개체마다_하루_한_번_적립한다() throws Exception {
+        String token = tokenOfNewUser();
+        Integer mango = createAnimal(token);
+        Integer choco = createAnimal(token);
+        Integer kiwi = createAnimal(token);
+        createItem(token, "귀뚜라미", 50);
+        createItem(token, "밀웜", 20);
+        String batch = """
+                { "type": "FEED", "date": "%s",
+                  "items": [ { "animalId": %d, "food": "귀뚜라미", "count": 6 },
+                             { "animalId": %d, "food": "귀뚜라미", "count": 4 },
+                             { "animalId": %d, "food": "밀웜", "count": 3 } ] }
+                """.formatted(KstDate.today(Clock.systemUTC()), mango, choco, kiwi);
+
+        postBatch(token, batch);
+        postBatch(token, batch);
+
+        mockMvc.perform(get("/api/v1/inventory").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.items[?(@.name == '귀뚜라미')].quantity").value(30))
+                .andExpect(jsonPath("$.data.items[?(@.name == '밀웜')].quantity").value(14));
+        mockMvc.perform(get("/api/v1/points/history").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.balance").value(30))
+                .andExpect(jsonPath("$.data.history", hasSize(3)));
+    }
+
+    private void postBatch(String token, String content) throws Exception {
+        mockMvc.perform(post("/api/v1/logs/batch").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(content))
+                .andExpect(status().isCreated());
+    }
+
+    private void createItem(String token, String name, int quantity) throws Exception {
+        mockMvc.perform(post("/api/v1/inventory").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"name\": \"%s\", \"quantity\": %d, \"unit\": \"COUNT\" }"
+                                .formatted(name, quantity)))
+                .andExpect(status().isCreated());
     }
 
     private Integer createAnimal(String token) throws Exception {

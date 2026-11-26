@@ -15,6 +15,10 @@ import com.tailfriends.inventory.repository.InventoryItemRepository;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.user.repository.UserRepository;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -95,12 +99,35 @@ public class InventoryService {
      */
     @Transactional
     public void deductForFeed(Log log) {
-        if (log.getType() != LogType.FEED || Boolean.TRUE.equals(log.getRefused())
-                || log.getFoodCount() == null || log.getFoodCount() <= 0 || !StringUtils.hasText(log.getFood())) {
+        if (!deducts(log)) {
             return;
         }
         inventoryItemRepository.deduct(log.getUser().getId(), log.getFood().strip(), InventoryUnit.COUNT,
                 log.getFoodCount());
+    }
+
+    /**
+     * 일괄 기록용. 한 건씩 {@link #deductForFeed}를 부른 것과 결과가 같지만, 같은 먹이는 개수를 합쳐 한 번만 뺀다.
+     * (0 아래로 내려가지 않으므로 나눠 빼든 합쳐 빼든 남는 수량이 같다)
+     */
+    @Transactional
+    public void deductForFeeds(List<Log> logs) {
+        Map<FoodKey, Long> amounts = logs.stream()
+                .filter(InventoryService::deducts)
+                .collect(Collectors.groupingBy(
+                        log -> new FoodKey(log.getUser().getId(), log.getFood().strip()),
+                        LinkedHashMap::new,
+                        Collectors.summingLong(Log::getFoodCount)));
+        amounts.forEach((food, amount) -> inventoryItemRepository.deduct(food.userId(), food.name(),
+                InventoryUnit.COUNT, (int) Math.min(amount, Integer.MAX_VALUE)));
+    }
+
+    private static boolean deducts(Log log) {
+        return log.getType() == LogType.FEED && !Boolean.TRUE.equals(log.getRefused())
+                && log.getFoodCount() != null && log.getFoodCount() > 0 && StringUtils.hasText(log.getFood());
+    }
+
+    private record FoodKey(Long userId, String name) {
     }
 
     private InventoryItem findItem(Long itemId) {
