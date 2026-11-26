@@ -57,7 +57,8 @@ public class LogService {
     public LogCreateResponse create(LogCreateRequest request) {
         Long userId = currentUser.id();
         validateDate(request.date());
-        Animal animal = findAnimal(userId, request.animalId());
+        Animal animal = animalRepository.findWithSpeciesByIdAndUserId(request.animalId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
         if (request.clientId() != null) {
             logRepository.findByUserIdAndClientId(userId, request.clientId()).ifPresent(existing -> {
                 throw new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,

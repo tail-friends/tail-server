@@ -64,7 +64,7 @@ class LogServiceTest {
 
     @Test
     void 기록일은_한국_날짜로_오늘까지_허용한다() {
-        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
 
         Long id = logService.create(weightRequest(null, LocalDate.of(2026, 10, 20))).id();
@@ -74,7 +74,7 @@ class LogServiceTest {
 
     @Test
     void 기록을_저장하면_다시_계산한_급여_상태를_함께_돌려준다() {
-        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
         given(logRepository.findLastFedDate(ANIMAL_ID)).willReturn(Optional.of(LocalDate.of(2026, 10, 20)));
 
@@ -95,7 +95,7 @@ class LogServiceTest {
 
     @Test
     void 남의_개체에는_기록할_수_없다() {
-        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.empty());
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> logService.create(weightRequest(null, LocalDate.of(2026, 10, 18))))
                 .isInstanceOf(BusinessException.class)
@@ -106,7 +106,7 @@ class LogServiceTest {
     @Test
     void 이미_저장한_clientId면_저장하지_않고_기존_기록_ID를_담아_409() {
         UUID clientId = UUID.randomUUID();
-        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.findByUserIdAndClientId(USER_ID, clientId))
                 .willReturn(Optional.of(withId(weightLog(LocalDate.of(2026, 10, 18)), 880L)));
 
@@ -157,7 +157,7 @@ class LogServiceTest {
 
     @Test
     void 더스팅한_급여_기록이면_기록일로_더스팅_일정을_완료하고_아니면_건드리지_않는다() {
-        given(animalRepository.findByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
         given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
         LocalDate date = LocalDate.of(2026, 10, 19);
 
