@@ -85,6 +85,19 @@ class LogServiceTest {
     }
 
     @Test
+    void 동기화용으로_저장하면_포인트와_재고를_똑같이_처리하고_급여_상태는_계산하지_않는다() {
+        given(animalRepository.findWithSpeciesByIdAndUserId(ANIMAL_ID, USER_ID)).willReturn(Optional.of(animal()));
+        given(logRepository.save(any())).willAnswer(invocation -> withId(invocation.getArgument(0), 902L));
+
+        Long id = logService.createForSync(feedRequest(LocalDate.of(2026, 10, 19), false));
+
+        assertThat(id).isEqualTo(902L);
+        verify(pointService).earnForLog(any());
+        verify(inventoryService).deductForFeed(any());
+        verify(logRepository, never()).findLastFedDate(any());
+    }
+
+    @Test
     void 기록일이_한국_날짜로_내일이면_INVALID_INPUT() {
         assertThatThrownBy(() -> logService.create(weightRequest(null, LocalDate.of(2026, 10, 21))))
                 .isInstanceOf(BusinessException.class)

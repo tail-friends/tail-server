@@ -55,6 +55,20 @@ public class LogService {
      */
     @Transactional
     public LogCreateResponse create(LogCreateRequest request) {
+        Saved saved = save(request);
+        return new LogCreateResponse(saved.log().getId(), saved.pointsEarned(), saved.newAlerts(),
+                FeedResponse.from(feedService.scheduleOf(saved.log().getAnimal())));
+    }
+
+    /**
+     * 오프라인 동기화용. {@link #create}와 같이 저장·처리하고, 동기화 응답에 쓰지 않는 급여 상태는 계산하지 않는다.
+     */
+    @Transactional
+    public Long createForSync(LogCreateRequest request) {
+        return save(request).log().getId();
+    }
+
+    private Saved save(LogCreateRequest request) {
         Long userId = currentUser.id();
         validateDate(request.date());
         Animal animal = animalRepository.findWithSpeciesByIdAndUserId(request.animalId(), userId)
@@ -78,8 +92,10 @@ public class LogService {
         int pointsEarned = pointService.earnForLog(log);
         inventoryService.deductForFeed(log);
         List<AlertResponse> newAlerts = healthAlertService.evaluate(animal, log.getType());
-        return new LogCreateResponse(log.getId(), pointsEarned, newAlerts,
-                FeedResponse.from(feedService.scheduleOf(animal)));
+        return new Saved(log, pointsEarned, newAlerts);
+    }
+
+    private record Saved(Log log, int pointsEarned, List<AlertResponse> newAlerts) {
     }
 
     /**
