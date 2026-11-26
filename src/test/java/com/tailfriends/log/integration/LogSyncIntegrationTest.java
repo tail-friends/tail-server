@@ -1,6 +1,8 @@
 package com.tailfriends.log.integration;
 
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -86,6 +88,39 @@ class LogSyncIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.results[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.data.results[1].status").value("DUPLICATE"));
+    }
+
+    @Test
+    void 동기화한_기록도_포인트_재고_건강_경고를_한_건씩_기록할_때와_같이_처리한다() throws Exception {
+        String token = tokenOfNewUser();
+        Integer mango = createAnimal(token);
+        mockMvc.perform(post("/api/v1/inventory").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"name\": \"귀뚜라미\", \"quantity\": 50, \"unit\": \"COUNT\" }"))
+                .andExpect(status().isCreated());
+        String fed = "{ \"clientId\": \"%s\", \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", "
+                + "\"food\": \"귀뚜라미\", \"count\": 4 }";
+        String refused = "{ \"clientId\": \"%s\", \"animalId\": %d, \"type\": \"FEED\", \"date\": \"%s\", "
+                + "\"food\": \"귀뚜라미\", \"count\": 1, \"refused\": true }";
+        String logs = String.join(",",
+                fed.formatted(UUID.randomUUID(), mango, "2026-08-30"),
+                refused.formatted(UUID.randomUUID(), mango, "2026-08-31"),
+                refused.formatted(UUID.randomUUID(), mango, "2026-09-01"),
+                refused.formatted(UUID.randomUUID(), mango, "2026-09-02"));
+
+        mockMvc.perform(post("/api/v1/logs/sync").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{ \"logs\": [" + logs + "] }"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.results[*].status").value(everyItem(is("CREATED"))));
+
+        mockMvc.perform(get("/api/v1/inventory").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.items[0].quantity").value(46));
+        mockMvc.perform(get("/api/v1/points/history").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.data.balance").value(10));
+        mockMvc.perform(get("/api/v1/health/alerts").header(HttpHeaders.AUTHORIZATION, token)
+                        .param("animalId", mango.toString()))
+                .andExpect(jsonPath("$.data.alerts", hasSize(1)))
+                .andExpect(jsonPath("$.data.alerts[0].type").value("REFUSAL_ALERT"));
     }
 
     private Integer createAnimal(String token) throws Exception {
