@@ -31,7 +31,7 @@ public class LogSyncService {
     private final Validator validator;
 
     /**
-     * 항목마다 {@link LogService#create}를 따로 부른다(항목마다 트랜잭션이 따로 열린다). 그래서 이 메서드에는
+     * 항목마다 {@link LogService#createForSync}를 따로 부른다(항목마다 트랜잭션이 따로 열린다). 그래서 이 메서드에는
      * 트랜잭션을 걸지 않는다. 포인트·먹이 재고·건강 경고도 한 건씩 기록할 때와 같이 처리된다.
      * 이미 있는 clientId는 DUPLICATE와 기존 기록 ID, 검증이나 처리에 실패하면 FAILED와 에러를 돌려준다.
      */
@@ -52,7 +52,7 @@ public class LogSyncService {
             return LogSyncResult.failed(item.clientId(), ErrorCode.INVALID_INPUT, describe(violations));
         }
         try {
-            return LogSyncResult.created(item.clientId(), logService.create(item).id());
+            return LogSyncResult.created(item.clientId(), logService.createForSync(item));
         } catch (BusinessException e) {
             if (e.getErrorCode() == ErrorCode.DUPLICATE_CLIENT_ID && e.getData() instanceof LogIdResponse existing) {
                 return LogSyncResult.duplicate(item.clientId(), existing.id());
