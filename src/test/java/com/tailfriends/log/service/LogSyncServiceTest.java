@@ -13,7 +13,6 @@ import com.tailfriends.global.support.CurrentUserStub;
 import com.tailfriends.log.domain.Log;
 import com.tailfriends.log.domain.LogType;
 import com.tailfriends.log.dto.LogCreateRequest;
-import com.tailfriends.log.dto.LogCreateResponse;
 import com.tailfriends.log.dto.LogIdResponse;
 import com.tailfriends.log.dto.LogSyncRequest;
 import com.tailfriends.log.dto.LogSyncResult;
@@ -47,9 +46,9 @@ class LogSyncServiceTest {
         LogCreateRequest a = weight(CLIENT_A, 12L);
         LogCreateRequest b = weight(CLIENT_B, 99L);
         LogCreateRequest c = weight(CLIENT_C, 12L);
-        given(logService.create(a)).willReturn(created(901L));
-        given(logService.create(b)).willThrow(new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
-        given(logService.create(c)).willReturn(created(902L));
+        given(logService.createForSync(a)).willReturn(901L);
+        given(logService.createForSync(b)).willThrow(new BusinessException(ErrorCode.ANIMAL_NOT_FOUND));
+        given(logService.createForSync(c)).willReturn(902L);
 
         List<LogSyncResult> results = service.sync(new LogSyncRequest(List.of(a, b, c))).results();
 
@@ -63,7 +62,7 @@ class LogSyncServiceTest {
     @Test
     void 이미_저장된_clientId는_DUPLICATE와_기존_기록_ID를_돌려준다() {
         LogCreateRequest a = weight(CLIENT_A, 12L);
-        given(logService.create(a)).willThrow(new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
+        given(logService.createForSync(a)).willThrow(new BusinessException(ErrorCode.DUPLICATE_CLIENT_ID,
                 ErrorCode.DUPLICATE_CLIENT_ID.getMessage(), new LogIdResponse(700L)));
 
         LogSyncResult result = service.sync(new LogSyncRequest(List.of(a))).results().getFirst();
@@ -78,7 +77,7 @@ class LogSyncServiceTest {
         LogCreateRequest a = weight(CLIENT_A, 12L);
         Log existing = mock(Log.class);
         given(existing.getId()).willReturn(701L);
-        given(logService.create(a)).willThrow(new DataIntegrityViolationException("uk_logs_user_id_client_id"));
+        given(logService.createForSync(a)).willThrow(new DataIntegrityViolationException("uk_logs_user_id_client_id"));
         given(logRepository.findByUserIdAndClientId(USER_ID, CLIENT_A)).willReturn(Optional.of(existing));
 
         LogSyncResult result = service.sync(new LogSyncRequest(List.of(a))).results().getFirst();
@@ -104,9 +103,5 @@ class LogSyncServiceTest {
     private static LogCreateRequest weight(UUID clientId, Long animalId) {
         return new LogCreateRequest(clientId, animalId, LogType.WEIGHT, LocalDate.of(2026, 10, 17),
                 null, null, null, null, null, null, null, new BigDecimal("58.1"), null, null, null, null, null);
-    }
-
-    private static LogCreateResponse created(Long id) {
-        return new LogCreateResponse(id, 0, List.of(), null);
     }
 }
