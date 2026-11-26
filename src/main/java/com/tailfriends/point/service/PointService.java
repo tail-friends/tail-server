@@ -13,7 +13,9 @@ import com.tailfriends.point.repository.PointHistoryRepository;
 import com.tailfriends.user.domain.User;
 import com.tailfriends.user.repository.UserRepository;
 import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -43,18 +45,37 @@ public class PointService {
      */
     @Transactional
     public int earnForLog(Log log) {
+        if (!recordEarning(log)) {
+            return 0;
+        }
+        userRepository.addPoints(log.getUser().getId(), LOG_POINTS);
+        return LOG_POINTS;
+    }
+
+    /**
+     * 일괄 기록용. 적립 기준은 {@link #earnForLog}와 같고, 잔액은 사용자마다 적립한 합계로 한 번만 더한다.
+     */
+    @Transactional
+    public void earnForLogs(List<Log> logs) {
+        Map<Long, Integer> earned = new LinkedHashMap<>();
+        for (Log log : logs) {
+            if (recordEarning(log)) {
+                earned.merge(log.getUser().getId(), LOG_POINTS, Integer::sum);
+            }
+        }
+        earned.forEach(userRepository::addPoints);
+    }
+
+    /**
+     * 적립 내역을 남겼으면 true. 적립 대상이 아니거나 오늘 이미 적립했으면 false.
+     */
+    private boolean recordEarning(Log log) {
         Optional<PointReason> reason = PointReason.ofLog(log.getType());
         if (reason.isEmpty()) {
-            return 0;
+            return false;
         }
-        Long userId = log.getUser().getId();
-        int inserted = pointHistoryRepository.insertEarning(userId, log.getAnimal().getId(), log.getId(),
-                LOG_POINTS, reason.get().name(), KstDate.today(clock));
-        if (inserted == 0) {
-            return 0;
-        }
-        userRepository.addPoints(userId, LOG_POINTS);
-        return LOG_POINTS;
+        return pointHistoryRepository.insertEarning(log.getUser().getId(), log.getAnimal().getId(), log.getId(),
+                LOG_POINTS, reason.get().name(), KstDate.today(clock)) > 0;
     }
 
     /**
